@@ -50,8 +50,23 @@ class component{
     /** Function to run a component to an array of components */
     bool run_component(comp_prop component_run);    
 
+    /**##########################################
+     * #     Component Execution Operations     #
+     * ##########################################*/
+
+    // >>>>>>>>>>>>>>>>> Assets <<<<<<<<<<<<<<<<
     /** Common ways all components are run */
     bool common_component(comp_prop component_common);
+
+    // >>>>>>>>>>>>>>>>> Outputs <<<<<<<<<<<<<<<<
+    /** Numenical Output */
+
+    // >>>>>>>>>>>>>> Interactable <<<<<<<<<<<<<<
+    /** Button */
+
+    /** Toggle Buttons */
+
+    /** Slider */
 
     private:
     std::vector<comp_prop> component_list;
