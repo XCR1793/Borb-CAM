@@ -2,7 +2,7 @@
 #define COMPONENTS
 #include <vector>
 #include <raylib.h>
-#include <raygui.h>
+#include "raygui.h"
 #include <stdio.h>
 #include <stdlib.h>
 
