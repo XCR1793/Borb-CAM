@@ -48,8 +48,7 @@ bool component::modify_component(comp_prop component_item){
             return true;
         }
     }
-    component_list.push_back(component_item);
-    return true;
+    return false;
 }
 
 bool component::modify_component(comp_prop component_item, int id){
@@ -100,6 +99,52 @@ comp_prop component::position_component(comp_prop component_input, int xpos, int
     return component_input;
 }
 
+comp_prop component::resize_component(comp_prop component_input, int width, int height){
+    component_input.width = width;
+    component_input.height = height;
+    return component_input;
+}
+
+void hsl_to_rgb(float H, float S, float L, unsigned char& r, unsigned char& g, unsigned char& b) {
+    float R, G, B;
+
+    if (S == 0) {
+        // Achromatic (grayscale)
+        R = G = B = L;
+    } else {
+        auto hue_to_rgb = [](float p, float q, float t) -> float {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1.0 / 6) return p + (q - p) * 6 * t;
+            if (t < 1.0 / 2) return q;
+            if (t < 2.0 / 3) return p + (q - p) * (2.0 / 3 - t) * 6;
+            return p;
+        };
+
+        float q = (L < 0.5f) ? (L * (1 + S)) : (L + S - L * S);
+        float p = 2 * L - q;
+
+        R = hue_to_rgb(p, q, H + 1.0f / 3.0f);
+        G = hue_to_rgb(p, q, H);
+        B = hue_to_rgb(p, q, H - 1.0f / 3.0f);
+    }
+
+    r = static_cast<unsigned char>(R * 255);
+    g = static_cast<unsigned char>(G * 255);
+    b = static_cast<unsigned char>(B * 255);
+}
+
+Color component::hsl_colour(int h, int s, int l, int a) {
+    float H = static_cast<float>(h) / 360.0f;
+    float S = static_cast<float>(s) / 100.0f;
+    float L = static_cast<float>(l) / 100.0f;
+
+    unsigned char r, g, b;
+    hsl_to_rgb(H, S, L, r, g, b);
+
+    return Color{r, g, b, static_cast<unsigned char>(a)};
+}
+
 comp_prop component::id_component(comp_prop component_input, int id){
     component_input.id = id;
     return component_input;
@@ -144,3 +189,9 @@ bool component::numerical_output_component(int value, int posx, int posy, int si
     DrawText(buffer, posx, posy, size, colour);
     return true;
 }
+
+// bool component::button_component(int id){
+//     int pos = id_pos_component(id);
+//     if(GuiButton((Rectangle){component_list.at(pos).width, component_list.at(pos).height, component_list.at(pos).xpos, component_list.at(pos).ypos}, "Click Me")){return true;};
+//     return false;
+// }

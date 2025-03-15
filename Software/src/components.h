@@ -71,6 +71,12 @@ class component{
     /** Tool to reposition component */
     comp_prop position_component(comp_prop component_input, int xpos, int ypos);
 
+    /** Tool to resize component */
+    comp_prop resize_component(comp_prop component_input, int width, int height);
+
+    /** Tool to convert colour to hsla */
+    Color hsl_colour(int h, int s, int l, int a);
+
     /** Tool to id component */
     comp_prop id_component(comp_prop component_input, int id);
 
@@ -89,10 +95,27 @@ class component{
 
     // >>>>>>>>>>>>>> Interactable <<<<<<<<<<<<<<
     /** Button */
+    // bool button_component(int id);
 
     /** Toggle Buttons */
 
     /** Slider */
+
+    /**##########################################
+     * #    Component Abstraction Operations    #
+     * ##########################################*/
+
+    bool addRectangle(int id);
+    bool addNumOut(int id);
+    bool addButton(int id);
+    bool addButtonToggle(int id);
+    bool addSlider(int id);
+
+    bool retButton(int id);
+    bool retButtonToggle(int id);
+    double retSlider(int id);
+
+    bool remComponent(int type, int id);
 
     // private:
     std::vector<comp_prop> component_list;
