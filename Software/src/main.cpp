@@ -2,13 +2,20 @@
 #include <stdlib.h>
 #include <vector>
 #include <raylib.h>
-#include "raygui.h"
-#include "raymath.h"
+#include <raymath.h>
 #include "components.h"
+#include "camview.h"
+#include "shader.h"
 // #include "meshtools.h"
 // #include "pathplanner.h"
-// #define RLIGHTS_IMPLEMENTATION
-#include "rlights.h"
+#ifndef RAYGUI_IMPLEMENTATION
+    #define RAYGUI_IMPLEMENTATION
+    #include <raygui.h>
+#endif
+#ifndef RLIGHTS_IMPLEMENTATION
+    #define RLIGHTS_IMPLEMENTATION
+    #include <rlights.h>
+#endif
 
 #define MODEL_PATH "src/model.obj"
 
@@ -40,16 +47,6 @@ Shader LoadLightingShader(void)
     return shader;
 }
 
-Light* SetupLights(Shader shader)
-{
-    static Light lights[MAX_LIGHTS];
-    lights[0] = CreateLight(LIGHT_POINT, (Vector3){ -2, 1, -2 }, Vector3Zero(), YELLOW, shader);
-    lights[1] = CreateLight(LIGHT_POINT, (Vector3){ 2, 1, 2 }, Vector3Zero(), RED, shader);
-    lights[2] = CreateLight(LIGHT_POINT, (Vector3){ -2, 1, 2 }, Vector3Zero(), GREEN, shader);
-    lights[3] = CreateLight(LIGHT_POINT, (Vector3){ 2, 1, -2 }, Vector3Zero(), BLUE, shader);
-    return lights;
-}
-
 Model LoadObject(void)
 {
     return LoadModel(MODEL_PATH);
@@ -73,38 +70,6 @@ void TransformModel(Vector3 *position, Vector3 *rotationAxis, float *rotationAng
     if (IsKeyDown(KEY_PAGE_DOWN)) *scale -= 0.01f;
 }
 
-void UpdateCameraControls(Camera *camera, float zoomFactor)
-{
-    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
-        Vector2 delta = GetMouseDelta();
-        delta = Vector2Scale(delta, zoomFactor * 0.01f);
-        Vector3 forward = Vector3Subtract(camera->target, camera->position);
-        forward = Vector3Normalize(forward);
-        Vector3 right = Vector3CrossProduct(forward, camera->up);
-        camera->target = Vector3Add(camera->target, Vector3Scale(right, -delta.x));
-        camera->target = Vector3Add(camera->target, Vector3Scale(camera->up, delta.y));
-        camera->position = Vector3Add(camera->position, Vector3Scale(right, -delta.x));
-        camera->position = Vector3Add(camera->position, Vector3Scale(camera->up, delta.y));
-    }
-    
-    float wheelMove = GetMouseWheelMove();
-    if (wheelMove != 0)
-    {
-        Vector3 direction = Vector3Subtract(camera->target, camera->position);
-        direction = Vector3Scale(direction, 1.0f + wheelMove * 0.1f);
-        camera->position = Vector3Subtract(camera->target, direction);
-    }
-    
-    if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
-        Vector2 delta = GetMouseDelta();
-        delta = Vector2Scale(delta, 0.005f);
-        Vector3 right = Vector3CrossProduct(Vector3Subtract(camera->target, camera->position), camera->up);
-        camera->position = Vector3RotateByAxisAngle(camera->position, camera->up, -delta.x);
-        camera->position = Vector3RotateByAxisAngle(camera->position, right, -delta.y);
-    }
-}
-
-
 int main(){
     Initialise_Window();
 
@@ -113,18 +78,19 @@ int main(){
     item.add_component(rect, 0); // Title Bar
     item.add_component(rect, 1); // Side Bar
 
+    camview Camera;
+    Camera.Initialise_Camera();
+
+    shader viewShader;
+
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);
 
-    Camera camera = { 0 };
-    camera.position = (Vector3){ 2.0f, 4.0f, 6.0f };
-    camera.target = (Vector3){ 0.0f, 0.5f, 0.0f };
-    camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
-    camera.fovy = 45.0f;
-    camera.projection = CAMERA_PERSPECTIVE;
-
     Shader shader = LoadLightingShader();
-    Light* lights = SetupLights(shader);
+
+    int number = 4;
+
+    Light* lights = viewShader.SetupLights(shader, (Vector3){0.0f, 0.0f, 0.0f}, 5.0f, number);
     Model model = LoadObject();
     model.materials[0].shader = shader;
 
@@ -151,23 +117,23 @@ int main(){
         rect.colour = item.hsl_colour(0, 0, 45, 255);
         item.modify_component(rect, 1);
 
-        float zoomFactor = Vector3Distance(camera.position, camera.target) * 0.1f;
-        UpdateCameraControls(&camera, zoomFactor);
+        float zoomFactor = Vector3Distance(Camera.camera.position, Camera.camera.target) * 0.1f;
+        Camera.UpdateCameraControls(&Camera.camera, zoomFactor);
 
-        float cameraPos[3] = { camera.position.x, camera.position.y, camera.position.z };
+        float cameraPos[3] = { Camera.camera.position.x, Camera.camera.position.y, Camera.camera.position.z };
         SetShaderValue(shader, shader.locs[SHADER_LOC_VECTOR_VIEW], cameraPos, SHADER_UNIFORM_VEC3);
-        
-        for (int i = 0; i < MAX_LIGHTS; i++) UpdateLightValues(shader, lights[i]);
+
+        for (int i = 0; i < number; i++) UpdateLightValues(shader, lights[i]);
         
         BeginDrawing();
         ClearBackground(BLACK);
 
-        BeginMode3D(camera);
+        BeginMode3D(Camera.camera);
         BeginShaderMode(shader);
         DrawPlane(Vector3Zero(), (Vector2){ 10.0f, 10.0f }, WHITE);
         DrawModelEx(model, modelPosition, modelRotation, rotationAngle, (Vector3){ modelScale, modelScale, modelScale }, WHITE);
         EndShaderMode();
-        for (int i = 0; i < MAX_LIGHTS; i++) {
+        for (int i = 0; i < number; i++) {
             if (lights[i].enabled) DrawSphereEx(lights[i].position, 0.2f, 8, 8, lights[i].color);
             else DrawSphereWires(lights[i].position, 0.2f, 8, 8, ColorAlpha(lights[i].color, 0.3f));
         }
@@ -181,6 +147,14 @@ int main(){
         
 
         item.run_components();
+
+        if (GuiButton((Rectangle){ 100, 80, 50, 30 }, "-")) {
+            number--;
+        }
+
+        if (GuiButton((Rectangle){ 250, 80, 50, 30 }, "+")) {
+            number++;
+        }
 
         EndDrawing();
         item.update_properties();
