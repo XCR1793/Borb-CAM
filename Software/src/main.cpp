@@ -88,20 +88,27 @@ int main(){
 
     Shader shader = LoadLightingShader();
 
-    int number = 4;
+    int Light_Count = 4;
+    float radius = 1000;
 
-    Light* lights = viewShader.SetupLights(shader, (Vector3){0.0f, 0.0f, 0.0f}, 5.0f, number);
+    Light* lights = viewShader.SetupLights(shader, (Vector3){0.0f, 0.0f, 0.0f}, radius, Light_Count);
     Model model = LoadObject();
     model.materials[0].shader = shader;
 
+    // BoundingBox bbox = GetModelBoundingBox(model);
+    // Vector3 quad[4] = { {-1,0,1}, {1,0,1}, {1,0,-1}, {-1,0,-1} };
+    // Vector3 triangle[3] = { {0,1,0}, {-1,0,0}, {1,0,0} };
+    // Vector3 sphereCenter = {0, 1, 0};
+    // float sphereRadius = 0.5f;
+
     Vector3 modelPosition = { 0.0f, 0.0f, 0.0f };
-    Vector3 modelRotation = {-90.0f, 0.0f, 0.0f }; // Default rotation axis (Y-axis)
+    Vector3 modelRotation = {-90.0f, 0.0f, 0.0f };
     float rotationAngle = 90.0f;
     float modelScale = 0.010f;
 
-    // float slider1 = 0.0f;
-    // float slider2 = 0.0f;
-    // float slider3 = 0.0f;
+    // HDRPhotosphere sphere = viewShader.LoadHDRPhotosphere("cyclorama_hard_light_4k.hdr", "resources/shaders/glsl%i/skybox.vs", "resources/shaders/glsl%i/skybox.fs");
+
+    // BoundingBox modelBoundingBox = GetMeshBoundingBox(model.meshes[0]);
 
     SetTargetFPS(60);
 
@@ -123,42 +130,43 @@ int main(){
         float cameraPos[3] = { Camera.camera.position.x, Camera.camera.position.y, Camera.camera.position.z };
         SetShaderValue(shader, shader.locs[SHADER_LOC_VECTOR_VIEW], cameraPos, SHADER_UNIFORM_VEC3);
 
-        for (int i = 0; i < number; i++) UpdateLightValues(shader, lights[i]);
+        for (int i = 0; i < Light_Count; i++) UpdateLightValues(shader, lights[i]);
         
         BeginDrawing();
         ClearBackground(BLACK);
 
         BeginMode3D(Camera.camera);
+        // viewShader.DrawHDRPhotosphere(sphere, Camera.camera);
+
         BeginShaderMode(shader);
         DrawPlane(Vector3Zero(), (Vector2){ 10.0f, 10.0f }, WHITE);
         DrawModelEx(model, modelPosition, modelRotation, rotationAngle, (Vector3){ modelScale, modelScale, modelScale }, WHITE);
         EndShaderMode();
-        for (int i = 0; i < number; i++) {
+        for (int i = 0; i < Light_Count; i++) {
             if (lights[i].enabled) DrawSphereEx(lights[i].position, 0.2f, 8, 8, lights[i].color);
             else DrawSphereWires(lights[i].position, 0.2f, 8, 8, ColorAlpha(lights[i].color, 0.3f));
         }
         DrawGrid(10, 1.0f);
+
+        // Camera.UpdateCameraView(model, bbox, quad, triangle, sphereCenter, sphereRadius, modelPosition, modelRotation, rotationAngle, modelScale);
+
+
         EndMode3D();
         // DrawFPS(10, 10);
 
-        // slider1 = GuiSliderBar((Rectangle){ 20, item.global_properties.window_size_height - 90, 200, 20 }, "X Pos", NULL, &slider1, -5.0f, 5.0f);
-        // slider2 = GuiSliderBar((Rectangle){ 20, item.global_properties.window_size_height - 60, 200, 20 }, "Y Pos", NULL, &slider2, -5.0f, 5.0f);
-        // slider3 = GuiSliderBar((Rectangle){ 20, item.global_properties.window_size_height - 30, 200, 20 }, "Z Pos", NULL, &slider3, -5.0f, 5.0f);
-        
+        viewShader.UpdateLights(lights, (Vector3){0.0f, 300, 0.0f}, radius, Light_Count, 0.1);
 
-        item.run_components();
+        // DrawBoundingBox(modelBoundingBox, CYAN);
 
-        if (GuiButton((Rectangle){ 100, 80, 50, 30 }, "-")) {
-            number--;
-        }
+        // item.run_components();
 
-        if (GuiButton((Rectangle){ 250, 80, 50, 30 }, "+")) {
-            number++;
-        }
+
 
         EndDrawing();
         item.update_properties();
     }
+    // UnloadModel(sphere.model);
+    // UnloadShader(sphere.shader);
     UnloadModel(model);
     CloseWindow();
     return 0;
