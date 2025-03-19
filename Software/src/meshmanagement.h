@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <raylib.h>
+#include <raymath.h>
 
 struct multimodel{
     int id;
@@ -15,18 +16,36 @@ struct multimodel{
 
 class mesh{
     public:
+
+    /**##########################################
+     * #             Model Functions            #
+     * ##########################################*/
     
-    void Add_Model(int id, const char *model_path);
+    void Add_Model(int id, const char *model_path); // Add New Model
 
-    void Rem_Model(int id);
+    void Rem_Model(int id); // Remove Model
 
-    Model Ret_Model(int id);
+    Model Ret_Model(int id); // Return Model at ID
 
-    void Rep_Model(int id, Vector3 position);
+    void Rep_Model(int id, Vector3 position); // Reposition Model
 
-    int CNT_Models();
+    void Reu_Model(int id, Model model); // Reupload Model
 
-    void Run_Models();
+    int CNT_Models(); // Return a count of Models Loaded
+
+    void Run_Models(); // Run Models
+
+    void Stop_Models(); // Unload all Models
+
+    /**##########################################
+     * #       Mesh Manipulation Functions      #
+     * ##########################################*/
+
+    Model Scale_Model(Model &model, float scale);
+
+    Model Position_Model(Model &model, Vector3 position);
+
+    Model Rotate_Model(Model &model, Vector3 rotatiton);
 
     private:
     

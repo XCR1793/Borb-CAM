@@ -27,19 +27,21 @@ class app{
      * #            Button Functions            #
      * ##########################################*/
 
-    void Add_Button(int id);
+    void Add_Button(int id); // Add Button
 
-    void Add_Button(int id, float height, float width, float xpos, float ypos, const char *text);
+    void Add_Button(int id, float height, float width, float xpos, float ypos, const char *text); // Add Button
 
-    void Rem_Button(int id);
+    void Rem_Button(int id); // Remove Button
 
-    bool Ret_Button(int id);
+    bool Ret_Button(int id); // Return Button State
 
-    int CNT_Buttons();
+    int CNT_Buttons(); // Return a count of Buttons Loaded
 
-    void Run_Buttons();
+    void Run_Buttons(); // Run Buttons
 
-
+    /**##########################################
+     * #             Misc Functions             #
+     * ##########################################*/
 
     void Print(int value, int xpos, int ypos);
 

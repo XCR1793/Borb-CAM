@@ -1,5 +1,9 @@
 #include "meshmanagement.h"
 
+/**##########################################
+ * #            Button Functions            #
+ * ##########################################*/
+
 void mesh::Add_Model(int id, const char *model_path){
     if(!ID_Check(id, models)){
         models.push_back((multimodel){id, LoadModel(model_path)});
@@ -10,6 +14,7 @@ void mesh::Rem_Model(int id){
     if(!models.empty()){
         for(std::vector<multimodel>::size_type it = 0; it < models.size(); it++){
             if(models.at(it).id == id){
+                UnloadModel(models.at(it).model);
                 models.erase(models.begin() + it);
                 it--;
             }
@@ -38,6 +43,16 @@ void mesh::Rep_Model(int id, Vector3 position){
     }
 }
 
+void mesh::Reu_Model(int id, Model model){
+    if(!models.empty()){
+        for(std::vector<multimodel>::size_type it = 0; it < models.size(); it++){
+            if(models.at(it).id == id){
+                models.at(it).model = model;
+            }
+        }
+    }
+}
+
 int mesh::CNT_Models(){
     if(!models.empty()){
         return models.size();
@@ -52,6 +67,41 @@ void mesh::Run_Models(){
         }
     }
 }
+
+void mesh::Stop_Models(){
+    if(!models.empty()){
+        for(auto it : models){
+            UnloadModel(it.model);
+        }
+    }
+}
+
+/**##########################################
+ * #       Mesh Manipulation Functions      #
+ * ##########################################*/
+
+Model mesh::Scale_Model(Model &model, float scale){
+    model.transform = MatrixScale(scale, scale, scale);
+    return model;
+}
+
+Model mesh::Position_Model(Model &model, Vector3 position){
+    model.transform = MatrixMultiply(MatrixTranslate(position.x, position.y, position.z),model.transform);
+    return model;
+}
+
+Model mesh::Rotate_Model(Model &model, Vector3 rotatiton){
+    Matrix rotx = MatrixRotateX(rotatiton.x);
+    Matrix roty = MatrixRotateX(rotatiton.y);
+    Matrix rotz = MatrixRotateX(rotatiton.z);
+    model.transform = MatrixMultiply(MatrixMultiply(rotz, roty), rotx);
+    return model;
+}
+
+
+
+
+
 
 bool mesh::ID_Check(int id, std::vector<multimodel> &list){
     if(!list.empty()){
