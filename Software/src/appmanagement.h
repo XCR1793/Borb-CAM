@@ -21,6 +21,8 @@ class app{
 
     void Initialise_Window(int height, int width, int fps, const char *title, const char*logoName);
 
+    Camera Initialise_Camera(Vector3 position, Vector3 target_pos, Vector3 rotation, float fov, int projection);
+
     /**##########################################
      * #            Button Functions            #
      * ##########################################*/
@@ -33,9 +35,11 @@ class app{
 
     bool Ret_Button(int id);
 
-    int CNT_Button();
+    int CNT_Buttons();
 
     void Run_Buttons();
+
+
 
     void Print(int value, int xpos, int ypos);
 

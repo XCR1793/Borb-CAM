@@ -7,7 +7,19 @@ void app::Initialise_Window(int height, int width, int fps, const char *title, c
     SetWindowIcon(Icon);
     UnloadImage(Icon);
     SetTargetFPS(fps);
+    SetExitKey(0);
 }
+
+Camera app::Initialise_Camera(Vector3 position, Vector3 target_pos, Vector3 rotation, float fov, int projection){
+    Camera camera = {0};
+    camera.position = position;
+    camera.target = target_pos;
+    camera.up = rotation;
+    camera.fovy = fov;
+    camera.projection = projection;
+    return camera;
+}
+
 
 void app::Add_Button(int id){
     if(!ID_Check(id, buttons)){
@@ -43,7 +55,7 @@ bool app::Ret_Button(int id){
     return 0;
 }
 
-int app::CNT_Button(){
+int app::CNT_Buttons(){
     if(!buttons.empty()){
         return buttons.size();
     }
