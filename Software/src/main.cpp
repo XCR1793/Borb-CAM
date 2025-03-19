@@ -1,44 +1,56 @@
-#include "raylib.h"
-#define RAYGUI_IMPLEMENTATION
-#include "raygui.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include <string>
+#include <raylib.h>
+#include <raymath.h>
+#include "appmanagement.h"
 
-int main() {
-    // Initialization
-    const int screenWidth = 600;
-    const int screenHeight = 400;
-    InitWindow(screenWidth, screenHeight, "Raylib + Raygui Example");
-    SetTargetFPS(60);
+#ifndef RAYGUI_IMPLEMENTATION
+    #define RAYGUI_IMPLEMENTATION
+    #include <raygui.h>
+#endif
+#ifndef RLIGHTS_IMPLEMENTATION
+    #define RLIGHTS_IMPLEMENTATION
+    #include <rlights.h>
+#endif
 
-    // GUI Elements
-    bool buttonPressed = false;
-    float sliderValue = 50.0f;
-    char textInput[32] = "Type here";
-    bool textBoxEditMode = false;
+int main(){
+    app window;
+    window.Initialise_Window(800, 1200, 60, "Borb CAM Slicer", "src/Logo-Light.png");
 
-    // Main Loop
-    while (!WindowShouldClose()) {
-        // GUI Interaction
-        if (GuiButton((Rectangle){ 50, 50, 100, 30 }, "Press Me")) {
-            buttonPressed = !buttonPressed;
-        }
-        sliderValue = GuiSlider((Rectangle){ 50, 100, 200, 20 }, "Min", "Max", sliderValue, 0, 100);
-        if (GuiTextBox((Rectangle){ 50, 150, 200, 30 }, textInput, 32, textBoxEditMode)) {
-            textBoxEditMode = !textBoxEditMode;
-        }
+    window.Add_Button(1, 20, 60, 30, 100, "PRESS ME");
 
-        // Drawing
+    int i = 0;
+    
+    while(!WindowShouldClose()){
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground(DARKGRAY);
 
-        // Display Outputs
-        DrawText(buttonPressed ? "Button: ON" : "Button: OFF", 300, 50, 20, buttonPressed ? GREEN : RED);
-        DrawText(TextFormat("Slider Value: %.2f", sliderValue), 300, 100, 20, DARKGRAY);
-        DrawText(TextFormat("Text: %s", textInput), 300, 150, 20, DARKBLUE);
+        window.Print(i, 500, 100);
 
+        if(i % 2 == 0){
+            window.Rem_Button(2);
+            window.Add_Button(1, 20, 60, 30, 100, "PRESS ME");
+            window.Print(1, 500, 50);
+        }else{
+            window.Rem_Button(1);
+            window.Add_Button(2, 20, 60, 60, 100, "PRESS ME");
+            window.Print(2, 500, 50);
+        }
+
+        if(window.Ret_Button(1)||window.Ret_Button(2)){
+            i++;
+        }
+
+        window.Print(window.CNT_Button(), 200, 10);
+
+        window.Run_Buttons();
+
+        DrawFPS(10, 10);
         EndDrawing();
     }
 
-    // Cleanup
     CloseWindow();
     return 0;
 }
