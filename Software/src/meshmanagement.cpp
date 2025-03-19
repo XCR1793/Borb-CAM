@@ -92,9 +92,9 @@ Model mesh::Position_Model(Model &model, Vector3 position){
 
 Model mesh::Rotate_Model(Model &model, Vector3 rotatiton){
     Matrix rotx = MatrixRotateX(rotatiton.x);
-    Matrix roty = MatrixRotateX(rotatiton.y);
-    Matrix rotz = MatrixRotateX(rotatiton.z);
-    model.transform = MatrixMultiply(MatrixMultiply(rotz, roty), rotx);
+    Matrix roty = MatrixRotateY(rotatiton.y);
+    Matrix rotz = MatrixRotateZ(rotatiton.z);
+    model.transform = MatrixMultiply(model.transform, MatrixMultiply(MatrixMultiply(rotx, roty), rotz));
     return model;
 }
 
