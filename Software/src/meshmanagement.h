@@ -47,6 +47,8 @@ class mesh{
 
     Model Rotate_Model(Model &model, Vector3 rotatiton);
 
+    Model FaceOffset_Model(Model &model, float offset);
+
     private:
     
     bool ID_Check(int id, std::vector<multimodel> &list);

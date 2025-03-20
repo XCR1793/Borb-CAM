@@ -98,7 +98,40 @@ Model mesh::Rotate_Model(Model &model, Vector3 rotatiton){
     return model;
 }
 
+Model mesh::FaceOffset_Model(Model &model, float offset) {
+    for (int i = 0; i < model.meshCount; i++) {
+        Mesh &mesh = model.meshes[i];
 
+        if (!mesh.vertices || !mesh.normals || mesh.triangleCount == 0)
+            continue;
+
+        int vertexCount = mesh.vertexCount;
+        std::vector<Vector3> newVertices(vertexCount);
+
+        Vector3 *vertices = (Vector3 *)mesh.vertices;
+        Vector3 *normals = (Vector3 *)mesh.normals;
+
+        // Modify vertex positions based on their normals
+        for (int j = 0; j < vertexCount; j++) {
+            newVertices[j] = Vector3Add(vertices[j], Vector3Scale(normals[j], offset));
+        }
+
+        // Allocate new memory for modified vertices
+        float *newVertexData = new float[vertexCount * 3];
+
+        // Copy the data manually without memcpy
+        for (int j = 0; j < vertexCount; j++) {
+            newVertexData[j * 3] = newVertices[j].x;
+            newVertexData[j * 3 + 1] = newVertices[j].y;
+            newVertexData[j * 3 + 2] = newVertices[j].z;
+        }
+
+        // Assign new vertex array to the mesh
+        mesh.vertices = newVertexData;
+    }
+
+    return model;  // Return modified model
+}
 
 
 

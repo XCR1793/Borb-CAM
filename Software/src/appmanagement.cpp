@@ -20,6 +20,19 @@ Camera app::Initialise_Camera(Vector3 position, Vector3 target_pos, Vector3 rota
     return camera;
 }
 
+Shader app::Initialise_Shader(){
+    int GLSL_VERSION = 330;
+    Shader shader = LoadShader(TextFormat("resources/shaders/glsl%i/lighting.vs", GLSL_VERSION),
+                               TextFormat("resources/shaders/glsl%i/lighting.fs", GLSL_VERSION));
+    shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
+    int ambientLoc = GetShaderLocation(shader, "ambient");
+    SetShaderValue(shader, ambientLoc, (float[4]){ 0.1f, 0.1f, 0.1f, 1.0f }, SHADER_UNIFORM_VEC4);
+    return shader;
+}
+
+void app::Load_3D_Environment(){
+    // Load Lights & Stuff
+}
 
 void app::Add_Button(int id){
     if(!ID_Check(id, buttons)){

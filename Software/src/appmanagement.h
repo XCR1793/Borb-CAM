@@ -23,6 +23,10 @@ class app{
 
     Camera Initialise_Camera(Vector3 position, Vector3 target_pos, Vector3 rotation, float fov, int projection);
 
+    Shader Initialise_Shader();
+
+    void Load_3D_Environment();
+
     /**##########################################
      * #            Button Functions            #
      * ##########################################*/
@@ -38,6 +42,11 @@ class app{
     int CNT_Buttons(); // Return a count of Buttons Loaded
 
     void Run_Buttons(); // Run Buttons
+
+    /**##########################################
+     * #            Shader Functions            #
+     * ##########################################*/
+
 
     /**##########################################
      * #             Misc Functions             #

@@ -16,6 +16,40 @@
     #include <rlights.h>
 #endif
 
+void DrawMeshNormals(Model &model, float offset, Color normalColor) {
+    if (!model.meshCount) return;
+
+    for (int m = 0; m < model.meshCount; m++) {
+        Mesh *mesh = &model.meshes[m];
+
+        if (!mesh->normals) {
+            GenMeshTangents(mesh);  // Generate normals if missing
+        }
+
+        for (int i = 0; i < mesh->vertexCount; i++) {
+            // Get the vertex position
+            Vector3 vertex = {
+                mesh->vertices[i * 3 + 0],
+                mesh->vertices[i * 3 + 1],
+                mesh->vertices[i * 3 + 2]
+            };
+
+            // Get the normal direction
+            Vector3 normal = {
+                mesh->normals[i * 3 + 0],
+                mesh->normals[i * 3 + 1],
+                mesh->normals[i * 3 + 2]
+            };
+
+            // Compute the endpoint of the normal line
+            Vector3 normalEnd = Vector3Add(vertex, Vector3Scale(normal, offset));
+
+            // Draw the normal line
+            DrawLine3D(vertex, normalEnd, normalColor);
+        }
+    }
+}
+
 int main(){
     app window;
     window.Initialise_Window(800, 1200, 60, "Borb CAM Slicer", "src/Logo-Light.png");
@@ -35,6 +69,8 @@ int main(){
     window.Add_Button(12, 20, 60, 120, 350, "B-");
     window.Add_Button(13, 20, 60, 30, 400, "C+");
     window.Add_Button(14, 20, 60, 120, 400, "C-");
+    window.Add_Button(15, 20, 60, 30, 450, "O+");
+    window.Add_Button(16, 20, 60, 120, 450, "O-");
 
     mesh models;
 
@@ -47,6 +83,7 @@ int main(){
     float a = 0;
     float b = 0;
     float c = 0;
+    float o = 0;
     
     while(!WindowShouldClose()){
         BeginDrawing();
@@ -66,6 +103,8 @@ int main(){
         if(window.Ret_Button(12)){b = b - 0.5;}
         if(window.Ret_Button(13)){c = c + 0.5;}
         if(window.Ret_Button(14)){c = c - 0.5;}
+        if(window.Ret_Button(13)){o = o + 0.5;}
+        if(window.Ret_Button(14)){o = o - 0.5;}
 
         window.Run_Buttons();
 
@@ -77,7 +116,11 @@ int main(){
 
         models.Rotate_Model(currentModel, (Vector3){a, b, c});
 
+        models.FaceOffset_Model(currentModel, o);
+
         models.Reu_Model(1, currentModel);
+
+        DrawMeshNormals(currentModel, o, BLUE);
 
         BeginMode3D(camera);
 
