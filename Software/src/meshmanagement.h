@@ -30,6 +30,10 @@ class mesh{
     void Rep_Model(int id, Vector3 position); // Reposition Model
 
     void Reu_Model(int id, Model model); // Reupload Model
+    
+    void Sha_Model(Shader shader); // Apply shader to all models
+
+    void Sha_Model(int id, Shader shader); // Apply shader to a specific model
 
     int CNT_Models(); // Return a count of Models Loaded
 

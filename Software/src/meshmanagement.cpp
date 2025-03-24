@@ -53,6 +53,18 @@ void mesh::Reu_Model(int id, Model model){
     }
 }
 
+void mesh::Sha_Model(Shader shader){
+    for(auto it : models){
+        it.model.materials[0].shader = shader;
+    }
+}
+
+void mesh::Sha_Model(int id, Shader shader){
+    Model model = Ret_Model(id);
+    model.materials[0].shader = shader;
+    Reu_Model(id, model);
+}
+
 int mesh::CNT_Models(){
     if(!models.empty()){
         return models.size();

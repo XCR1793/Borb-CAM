@@ -10,29 +10,9 @@ void app::Initialise_Window(int height, int width, int fps, const char *title, c
     SetExitKey(0);
 }
 
-Camera app::Initialise_Camera(Vector3 position, Vector3 target_pos, Vector3 rotation, float fov, int projection){
-    Camera camera = {0};
-    camera.position = position;
-    camera.target = target_pos;
-    camera.up = rotation;
-    camera.fovy = fov;
-    camera.projection = projection;
-    return camera;
-}
-
-Shader app::Initialise_Shader(){
-    int GLSL_VERSION = 330;
-    Shader shader = LoadShader(TextFormat("resources/shaders/glsl%i/lighting.vs", GLSL_VERSION),
-                               TextFormat("resources/shaders/glsl%i/lighting.fs", GLSL_VERSION));
-    shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
-    int ambientLoc = GetShaderLocation(shader, "ambient");
-    SetShaderValue(shader, ambientLoc, (float[4]){ 0.1f, 0.1f, 0.1f, 1.0f }, SHADER_UNIFORM_VEC4);
-    return shader;
-}
-
-void app::Load_3D_Environment(){
-    // Load Lights & Stuff
-}
+/**##########################################
+ * #            Button Functions            #
+ * ##########################################*/
 
 void app::Add_Button(int id){
     if(!ID_Check(id, buttons)){
@@ -82,6 +62,49 @@ void app::Run_Buttons(){
         }
     }
 }
+
+/**##########################################
+ * #            Camera Functions            #
+ * ##########################################*/
+
+Camera app::Initialise_Camera(Vector3 position, Vector3 target_pos, Vector3 rotation, float fov, int projection){
+    Camera camera = {0};
+    camera.position = position;
+    camera.target = target_pos;
+    camera.up = rotation;
+    camera.fovy = fov;
+    camera.projection = projection;
+    return camera;
+}
+
+/**##########################################
+ * #            Shader Functions            #
+ * ##########################################*/
+
+Shader app::Initialise_Shader(){
+    int GLSL_VERSION = 330;
+    Shader shader = LoadShader(TextFormat("resources/shaders/glsl%i/lighting.vs", GLSL_VERSION),
+                               TextFormat("resources/shaders/glsl%i/lighting.fs", GLSL_VERSION));
+    shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
+    int ambientLoc = GetShaderLocation(shader, "ambient");
+    SetShaderValue(shader, ambientLoc, (float[4]){ 0.1f, 0.1f, 0.1f, 1.0f }, SHADER_UNIFORM_VEC4);
+    return shader;
+}
+
+Light* app::Initialise_Lights(Shader shader){
+    Light* lights = (Light*)malloc(sizeof(Light) * 4);
+
+    lights[0] = CreateLight(LIGHT_DIRECTIONAL, Vector3Zero(), (Vector3){-1.0f, -1.0f, 0.0f}, RED, shader);
+    lights[1] = CreateLight(LIGHT_DIRECTIONAL, Vector3Zero(), (Vector3){1.0f, -1.0f, 0.0f}, GREEN, shader);
+    lights[2] = CreateLight(LIGHT_DIRECTIONAL, Vector3Zero(), (Vector3){0.0f, -1.0f, -1.0f}, BLUE, shader);
+    lights[3] = CreateLight(LIGHT_DIRECTIONAL, Vector3Zero(), (Vector3){0.0f, -1.0f, 1.0f}, YELLOW, shader);
+
+    return lights;
+}
+
+/**##########################################
+ * #             Misc Functions             #
+ * ##########################################*/
 
 void app::Print(int value, int posx, int posy){
     char buffer[20];

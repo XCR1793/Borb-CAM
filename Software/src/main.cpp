@@ -55,6 +55,9 @@ int main(){
     window.Initialise_Window(800, 1200, 60, "Borb CAM Slicer", "src/Logo-Light.png");
     Camera camera = window.Initialise_Camera((Vector3){20.0f, 20.0f, 20.0f}, (Vector3){0.0f, 8.0f, 0.0f}, (Vector3){0.0f, 1.6f, 0.0f},45.0f, CAMERA_PERSPECTIVE);
 
+    Shader shader = window.Initialise_Shader();
+    window.Initialise_Lights(shader);
+
     window.Add_Button(1, 20, 60, 30, 100, "X+");
     window.Add_Button(2, 20, 60, 120, 100, "X-");
     window.Add_Button(3, 20, 60, 30, 150, "Y+");
@@ -75,6 +78,7 @@ int main(){
     mesh models;
 
     models.Add_Model(1, "src/model.obj");
+    models.Sha_Model(shader);
 
     float x = 0;
     float y = 0;

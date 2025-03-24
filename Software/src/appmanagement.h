@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <raylib.h>
 #include <raygui.h>
+#include <raymath.h>
+#include <rlights.h>
+#include <rlgl.h>
 
 struct App_Button{
     int id;
@@ -20,12 +23,6 @@ class app{
     public:
 
     void Initialise_Window(int height, int width, int fps, const char *title, const char*logoName);
-
-    Camera Initialise_Camera(Vector3 position, Vector3 target_pos, Vector3 rotation, float fov, int projection);
-
-    Shader Initialise_Shader();
-
-    void Load_3D_Environment();
 
     /**##########################################
      * #            Button Functions            #
@@ -44,9 +41,17 @@ class app{
     void Run_Buttons(); // Run Buttons
 
     /**##########################################
+     * #            Camera Functions            #
+     * ##########################################*/
+    Camera Initialise_Camera(Vector3 position, Vector3 target_pos, Vector3 rotation, float fov, int projection);
+
+
+    /**##########################################
      * #            Shader Functions            #
      * ##########################################*/
+    Shader Initialise_Shader();
 
+    Light* Initialise_Lights(Shader shader);
 
     /**##########################################
      * #             Misc Functions             #
