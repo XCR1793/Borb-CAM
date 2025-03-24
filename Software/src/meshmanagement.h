@@ -1,6 +1,7 @@
 #ifndef MESHMANAGMENT
 #define MESHMANAGEMENT
 
+#include <string>
 #include <vector>
 #include <raylib.h>
 #include <raymath.h>
@@ -50,6 +51,8 @@ class mesh{
     Model Position_Model(Model &model, Vector3 position);
 
     Model Rotate_Model(Model &model, Vector3 rotatiton);
+
+    Model SDF_Model(Model &model);
 
     Model FaceOffset_Model(Model &model, float offset);
 

@@ -16,39 +16,6 @@
     #include <rlights.h>
 #endif
 
-void DrawMeshNormals(Model &model, float offset, Color normalColor) {
-    if (!model.meshCount) return;
-
-    for (int m = 0; m < model.meshCount; m++) {
-        Mesh *mesh = &model.meshes[m];
-
-        if (!mesh->normals) {
-            GenMeshTangents(mesh);  // Generate normals if missing
-        }
-
-        for (int i = 0; i < mesh->vertexCount; i++) {
-            // Get the vertex position
-            Vector3 vertex = {
-                mesh->vertices[i * 3 + 0],
-                mesh->vertices[i * 3 + 1],
-                mesh->vertices[i * 3 + 2]
-            };
-
-            // Get the normal direction
-            Vector3 normal = {
-                mesh->normals[i * 3 + 0],
-                mesh->normals[i * 3 + 1],
-                mesh->normals[i * 3 + 2]
-            };
-
-            // Compute the endpoint of the normal line
-            Vector3 normalEnd = Vector3Add(vertex, Vector3Scale(normal, offset));
-
-            // Draw the normal line
-            DrawLine3D(vertex, normalEnd, normalColor);
-        }
-    }
-}
 
 int main(){
     app window;
@@ -109,8 +76,8 @@ int main(){
         if(window.Ret_Button(12)){b = b - 0.5;}
         if(window.Ret_Button(13)){c = c + 0.5;}
         if(window.Ret_Button(14)){c = c - 0.5;}
-        if(window.Ret_Button(13)){o = o + 0.5;}
-        if(window.Ret_Button(14)){o = o - 0.5;}
+        if(window.Ret_Button(15)){o = o + 0.5;}
+        if(window.Ret_Button(16)){o = o - 0.5;}
 
         window.Run_Buttons();
 
@@ -122,11 +89,13 @@ int main(){
 
         models.Rotate_Model(currentModel, (Vector3){a, b, c});
 
+        window.Print(o, 100, 10);
+
         models.FaceOffset_Model(currentModel, o);
 
-        models.Reu_Model(1, currentModel);
+        // o = 0;
 
-        DrawMeshNormals(currentModel, o, BLUE);
+        models.Reu_Model(1, currentModel);
 
         BeginMode3D(camera);
 
