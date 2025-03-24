@@ -90,6 +90,8 @@ int main(){
     float o = 0;
     
     while(!WindowShouldClose()){
+
+        window.Update_Camera(&camera);
         BeginDrawing();
         ClearBackground(DARKGRAY);
 

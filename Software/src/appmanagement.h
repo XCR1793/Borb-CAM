@@ -45,6 +45,7 @@ class app{
      * ##########################################*/
     Camera Initialise_Camera(Vector3 position, Vector3 target_pos, Vector3 rotation, float fov, int projection);
 
+    void Update_Camera(Camera* camera);
 
     /**##########################################
      * #            Shader Functions            #
@@ -61,6 +62,7 @@ class app{
 
     private:
     std::vector<App_Button> buttons;
+    Camera Internal_Camera = {0};
 
     /**##########################################
      * #            General Functions           #

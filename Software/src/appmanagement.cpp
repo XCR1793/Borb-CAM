@@ -68,13 +68,39 @@ void app::Run_Buttons(){
  * ##########################################*/
 
 Camera app::Initialise_Camera(Vector3 position, Vector3 target_pos, Vector3 rotation, float fov, int projection){
-    Camera camera = {0};
-    camera.position = position;
-    camera.target = target_pos;
-    camera.up = rotation;
-    camera.fovy = fov;
-    camera.projection = projection;
-    return camera;
+    Internal_Camera.position = position;
+    Internal_Camera.target = target_pos;
+    Internal_Camera.up = rotation;
+    Internal_Camera.fovy = fov;
+    Internal_Camera.projection = projection;
+    return Internal_Camera;
+}
+
+void app::Update_Camera(Camera* camera){
+    float zoomFactor = Vector3Distance(Internal_Camera.position, Internal_Camera.target) * 0.1f;
+
+    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)){
+        Vector2 delta = Vector2Scale(GetMouseDelta(), zoomFactor * 0.01f);
+        Vector3 forward = Vector3Normalize(Vector3Subtract(camera->target, camera->position));
+        Vector3 right = Vector3CrossProduct(forward, camera->up);
+        camera->position = Vector3Add(camera->position, Vector3Scale(right, -delta.x));
+        camera->position = Vector3Add(camera->position, Vector3Scale(camera->up, delta.y));
+        camera->target = Vector3Add(camera->target, Vector3Scale(right, -delta.x));
+        camera->target = Vector3Add(camera->target, Vector3Scale(camera->up, delta.y));
+    }
+
+    float wheelMove = GetMouseWheelMove();
+    if (wheelMove != 0){
+        Vector3 direction = Vector3Scale(Vector3Subtract(camera->target, camera->position), 1.0f + wheelMove * 0.1f);
+        camera->position = Vector3Subtract(camera->target, direction);
+    }
+
+    if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)){
+        Vector2 delta = Vector2Scale(GetMouseDelta(), 0.005f);
+        Vector3 right = Vector3CrossProduct(Vector3Subtract(camera->target, camera->position), camera->up);
+        camera->position = Vector3RotateByAxisAngle(camera->position, camera->up, -delta.x);
+        camera->position = Vector3RotateByAxisAngle(camera->position, right, -delta.y);
+    }
 }
 
 /**##########################################
