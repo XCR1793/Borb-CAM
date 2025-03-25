@@ -17,7 +17,7 @@ struct multimodel{
 
 class mesh{
     public:
-
+    
     /**##########################################
      * #             Model Functions            #
      * ##########################################*/
@@ -52,9 +52,7 @@ class mesh{
 
     Model Rotate_Model(Model &model, Vector3 rotatiton);
 
-    Model SDF_Model(Model &model);
-
-    Model FaceOffset_Model(Model &model, float offset);
+    Model Intersect_Model(Model &model, Vector3 distance_xrot_yrot);
 
     private:
     

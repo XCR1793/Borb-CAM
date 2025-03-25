@@ -6,6 +6,7 @@
 #include <raymath.h>
 #include "appmanagement.h"
 #include "meshmanagement.h"
+#include "pathing.h"
 
 #ifndef RAYGUI_IMPLEMENTATION
     #define RAYGUI_IMPLEMENTATION
@@ -55,7 +56,14 @@ int main(){
     float b = 0;
     float c = 0;
     float o = 0;
-    
+
+    path paths;
+    paths.Create_File("src/OwO", "gcode");
+    paths.G0(3, 23, 40);
+    paths.G1(394, 203, 492, 49, 0.243);
+    paths.G1(394, 304, 495, 394, 0.3, 49);
+    paths.G0(394, 304, 495, 394, 0.3, 49);
+
     while(!WindowShouldClose()){
 
         window.Update_Camera(&camera);
@@ -91,7 +99,7 @@ int main(){
 
         window.Print(o, 100, 10);
 
-        models.FaceOffset_Model(currentModel, o);
+        // models.FaceOffset_Model(currentModel, o);
 
         // o = 0;
 

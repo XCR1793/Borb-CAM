@@ -110,11 +110,9 @@ Model mesh::Rotate_Model(Model &model, Vector3 rotatiton){
     return model;
 }
 
-Model mesh::SDF_Model(Model &model){
-    
-}
 
-Model mesh::FaceOffset_Model(Model &model, float offset) {
+
+Model mesh::Intersect_Model(Model &model, Vector3 distance_xrot_yrot) {
 
     // Return modified model
     return model;
