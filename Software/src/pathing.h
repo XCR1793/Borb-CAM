@@ -49,13 +49,15 @@ class path{
      * #              Gcode Commands            #
      * ##########################################*/
 
-    // Rapid Movement (xyz millimeters / inches) (abc degrees)
+    // Rapid Movement (xyz millimeters / inches) (abc degrees), f = feedrate
+    bool G0(float f);
     bool G0(float x, float y, float z);
     bool G0(float x, float y, float z, float a);
     bool G0(float x, float y, float z, float a, float b);
     bool G0(float x, float y, float z, float a, float b, float c);
 
-    // Normal Movement (xyz millimeters / inches) (abc degrees)
+    // Normal Movement (xyz millimeters / inches) (abc degrees), f = feetrate
+    bool G1(float f);
     bool G1(float x, float y, float z);
     bool G1(float x, float y, float z, float a);
     bool G1(float x, float y, float z, float a, float b);
@@ -75,6 +77,14 @@ class path{
 
     // Set workspace to Relative
     bool G91();
+
+    /**##########################################
+     * #              Pathing Tools             #
+     * ##########################################*/
+    
+    // Pair(Position, Rotation)
+    bool Path_to_Gcode0(std::vector<std::pair<Vector3, Vector3>>& positions);
+    bool Path_to_Gcode1(std::vector<std::pair<Vector3, Vector3>>& positions);
 
     private:
     std::string default_file_path;

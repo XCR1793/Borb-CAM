@@ -95,7 +95,7 @@ std::string path::Return_Gcode_Rotation(float a, float b){
 }
 
 std::string path::Return_Gcode_Rotation(float a, float b, float c){
-    return (Return_LV("A", a) + " " + Return_LV("B", b) + " " + Return_LV("C", c) + " " + Return_LV("K", c));
+    return (Return_LV("A", a) + " " + Return_LV("B", b) + " " + Return_LV("C", c));
 }
 
 std::string path::Return_EndPos(float x, float y, float z){
@@ -119,7 +119,12 @@ std::string path::Return_EndPos(float x, float y, float z, float a, float b, flo
  * #              Gcode Commands            #
  * ##########################################*/
 
- // Rapid Movement (xyz millimeters / inches) (abc degrees)
+// Rapid Movement (xyz millimeters / inches) (abc degrees), f = feedrate
+bool path::G0(float f){
+    Write_File_Last(default_file_path, "", ("G0 " + std::to_string(f)));
+    return true;
+}
+
 bool path::G0(float x, float y, float z){
     Write_File_Last(default_file_path, "", ("G0 " + Return_EndPos(x, y, z)));
     return true;
@@ -141,6 +146,11 @@ bool path::G0(float x, float y, float z, float a, float b, float c){
 }
 
 // Normal Movement (xyz millimeters / inches) (abc degrees)
+bool path::G1(float f){
+    Write_File_Last(default_file_path, "", ("G1 " + std::to_string(f)));
+    return true;
+}
+
 bool path::G1(float x, float y, float z){
     Write_File_Last(default_file_path, "", ("G1 " + Return_EndPos(x, y, z)));
     return true;
@@ -194,5 +204,27 @@ bool path::G90(){
 // Set workspace to Relative
 bool path::G91(){
     Write_File_Last(default_file_path, "", ("G91"));
+    return true;
+}
+
+/**##########################################
+ * #              Pathing Tools             #
+ * ##########################################*/
+
+bool path::Path_to_Gcode0(std::vector<std::pair<Vector3, Vector3>>& positions){
+    for(auto it = 0; it < positions.size(); it++){
+        Vector3 position = positions.at(it).first;
+        Vector3 rotation = positions.at(it).second;
+        G0(position.x, position.y, position.z, rotation.x, rotation.y, rotation.z);
+    }
+    return true;
+}
+
+bool path::Path_to_Gcode1(std::vector<std::pair<Vector3, Vector3>>& positions){
+    for(auto it = 0; it < positions.size(); it++){
+        Vector3 position = positions.at(it).first;
+        Vector3 rotation = positions.at(it).second;
+        G1(position.x, position.y, position.z, rotation.x, rotation.y, rotation.z);
+    }
     return true;
 }
