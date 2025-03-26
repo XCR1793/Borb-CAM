@@ -43,6 +43,18 @@ class mesh{
     void Stop_Models(); // Unload all Models
 
     /**##########################################
+     * #             Maths Functions            #
+     * ##########################################*/
+
+    float Rad_Deg(float radians);
+    Vector3 Rad_Deg(Vector3 angles);
+    
+    float Deg_Rad(float degrees);
+    Vector3 Deg_Rad(Vector3 angles);
+
+    Vector3 RotXYD_XYZ(Vector3 distance_xrot_yrot);
+
+    /**##########################################
      * #       Mesh Manipulation Functions      #
      * ##########################################*/
 
@@ -52,9 +64,13 @@ class mesh{
 
     Model Rotate_Model(Model &model, Vector3 rotatiton);
 
-    Model Intersect_Model(Model &model, Vector3 distance_xrot_yrot);
+    std::vector<std::pair<Vector3, Vector3>> Intersect_Model(Model &model, Vector3 distance_xrot_yrot);
 
     private:
+
+    /**##########################################
+     * #            Private Functions           #
+     * ##########################################*/
     
     bool ID_Check(int id, std::vector<multimodel> &list);
 

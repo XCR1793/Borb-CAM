@@ -89,6 +89,30 @@ void mesh::Stop_Models(){
 }
 
 /**##########################################
+ * #             Maths Functions            #
+ * ##########################################*/
+
+float mesh::Rad_Deg(float radians){
+    return (radians*(180/PI));
+}
+
+Vector3 mesh::Rad_Deg(Vector3 angles){
+    return ((Vector3){Rad_Deg(angles.x), Rad_Deg(angles.y), Rad_Deg(angles.z)});
+}
+
+float mesh::Deg_Rad(float degrees){
+    return (degrees*(PI/180));
+}
+
+Vector3 mesh::Deg_Rad(Vector3 angles){
+    return ((Vector3){Deg_Rad(angles.x), Deg_Rad(angles.y), Deg_Rad(angles.z)});
+}
+
+Vector3 mesh::RotXYD_XYZ(Vector3 distance_xrot_yrot){
+    return ((Vector3){(sin(distance_xrot_yrot.y)*cos(distance_xrot_yrot.x), -sin(distance_xrot_yrot.x), cos(distance_xrot_yrot.y)*cos(distance_xrot_yrot.x))});
+}
+
+/**##########################################
  * #       Mesh Manipulation Functions      #
  * ##########################################*/
 
@@ -110,14 +134,13 @@ Model mesh::Rotate_Model(Model &model, Vector3 rotatiton){
     return model;
 }
 
+std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vector3 distance_xrot_yrot){
 
-
-Model mesh::Intersect_Model(Model &model, Vector3 distance_xrot_yrot) {
-
-    // Return modified model
-    return model;
 }
 
+/**##########################################
+ * #            Private Functions           #
+ * ##########################################*/
 
 bool mesh::ID_Check(int id, std::vector<multimodel> &list){
     if(!list.empty()){
