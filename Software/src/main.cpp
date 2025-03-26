@@ -46,6 +46,17 @@ int main(){
     mesh models;
 
     models.Add_Model(1, "src/model.obj");
+    models.Add_Model(2, "src/model.obj");
+    models.Add_Model(3, "src/model.obj");
+
+    Model model2 = models.Ret_Model(2);
+    models.Position_Model(model2, (Vector3){5, 0, 0});
+    models.Reu_Model(2, model2);
+
+    Model model3 = models.Ret_Model(3);
+    models.Position_Model(model3, (Vector3){-5, 0, 0});
+    models.Reu_Model(3, model3);
+
     models.Sha_Model(shader);
 
     float x = 0;
@@ -125,10 +136,6 @@ int main(){
         models.Rotate_Model(currentModel, (Vector3){a, b, c});
 
         window.Print(o, 100, 10);
-
-        // models.FaceOffset_Model(currentModel, o);
-
-        // o = 0;
 
         models.Reu_Model(1, currentModel);
 
