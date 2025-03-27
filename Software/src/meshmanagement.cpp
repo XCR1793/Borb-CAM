@@ -112,6 +112,27 @@ Vector3 mesh::RotXYD_XYZ(Vector3 distance_xrot_yrot){
     return ((Vector3){(sin(distance_xrot_yrot.y)*cos(distance_xrot_yrot.x), -sin(distance_xrot_yrot.x), cos(distance_xrot_yrot.y)*cos(distance_xrot_yrot.x))});
 }
 
+std::pair<Vector3, bool> mesh::IntersectLinePlane(Vector3 planeNormal, Vector3 lineStart, Vector3 lineEnd) {
+    Vector3 lineDir = Vector3Subtract(lineEnd, lineStart);
+    float denom = Vector3DotProduct(planeNormal, lineDir);
+
+    if (fabsf(denom) < 1e-6f) {
+        // Line is parallel to the plane
+        return { Vector3Zero(), false };
+    }
+
+    // Plane goes through origin: planeNormal · P = 0
+    float t = -Vector3DotProduct(planeNormal, lineStart) / denom;
+
+    if (t < 0.0f || t > 1.0f) {
+        // Intersection not on the segment
+        return { Vector3Zero(), false };
+    }
+
+    Vector3 intersection = Vector3Add(lineStart, Vector3Scale(lineDir, t));
+    return { intersection, true };
+}
+
 /**##########################################
  * #       Mesh Manipulation Functions      #
  * ##########################################*/

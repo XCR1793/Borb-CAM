@@ -54,6 +54,15 @@ class mesh{
 
     Vector3 RotXYD_XYZ(Vector3 distance_xrot_yrot);
 
+    std::pair<Vector3, bool> IntersectLinePlane(Vector3 planeNormal, Vector3 lineStart, Vector3 lineEnd);
+
+    /**
+     * Add point to point, to line equation
+     * Add Line to Plane Intersection 3D Point equation
+     * Run the intersection equation through all object points
+     * Return an array with all intersection points
+     */
+
     /**##########################################
      * #       Mesh Manipulation Functions      #
      * ##########################################*/

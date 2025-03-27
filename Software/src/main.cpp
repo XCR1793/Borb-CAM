@@ -108,12 +108,27 @@ int main(){
         BeginDrawing();
         ClearBackground(DARKGRAY);
 
-        if(window.Ret_Button(1)){x = x + 5;}
-        if(window.Ret_Button(2)){x = x - 5;}
-        if(window.Ret_Button(3)){y = y + 5;}
-        if(window.Ret_Button(4)){y = y - 5;}
-        if(window.Ret_Button(5)){z = z + 5;}
-        if(window.Ret_Button(6)){z = z - 5;}
+        Vector3 plane = models.RotXYD_XYZ((Vector3){x, y, z});
+        Vector3 line_start = {10, 10, 10};
+        Vector3 line_end = {-10, -10, -10};
+        std::pair<Vector3, bool> intersection = models.IntersectLinePlane(plane, line_start, line_end);
+
+        window.Print(plane.x, 300, 30);
+        window.Print(plane.y, 300, 60);
+        window.Print(plane.z, 300, 90);
+        
+        window.Print(intersection.second, 600, 30);
+        window.Print(intersection.first.x, 600, 60);
+        window.Print(intersection.first.y, 600, 90);
+        window.Print(intersection.first.z, 600, 120);
+        
+
+        if(window.Ret_Button(1)){x = x + 1;}
+        if(window.Ret_Button(2)){x = x - 1;}
+        if(window.Ret_Button(3)){y = y + 1;}
+        if(window.Ret_Button(4)){y = y - 1;}
+        if(window.Ret_Button(5)){z = z + 1;}
+        if(window.Ret_Button(6)){z = z - 1;}
         if(window.Ret_Button(7)){s = s + 0.5;}
         if(window.Ret_Button(8)){s = s - 0.5;}
         if(window.Ret_Button(9)){a = a + 0.5;}
@@ -140,6 +155,8 @@ int main(){
         models.Reu_Model(1, currentModel);
 
         BeginMode3D(camera);
+
+        DrawLine3D(line_start, line_end, RED);
 
         models.Run_Models();
 
