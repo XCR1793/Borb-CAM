@@ -17,7 +17,6 @@
     #include <rlights.h>
 #endif
 
-
 int main(){
     app window;
     window.Initialise_Window(800, 1200, 60, "Borb CAM Slicer", "src/Logo-Light.png");
@@ -111,7 +110,7 @@ int main(){
         Vector3 plane = models.RotXYD_XYZ((Vector3){0, a, b});
         Vector3 line_start = {x+10, y+10, z+10};
         Vector3 line_end   = {x-10, y-10, z-10};
-        std::pair<Vector3, bool> intersection = models.IntersectLinePlane(plane, line_start, line_end);
+        std::pair<Vector3, bool> intersection = models.IntersectLinePlane((Vector3){0, 1, 0}, line_start, line_end);
 
         Model currentmodel = models.Ret_Model(1);
 
@@ -159,7 +158,12 @@ int main(){
 
         BeginMode3D(camera);
 
-        if(!intersectionList.empty()){window.Print(intersectionList.size(), 800, 60);for(long i = 0; i < intersectionList.size()-1; i++){DrawLine3D(intersectionList.at(i).first, intersectionList.at(i+1).first, BLUE);}}
+        if(!intersectionList.empty()){
+            window.Print(intersectionList.size(), 800, 60);
+            for(long i = 0; i < intersectionList.size()-1; i++){
+                DrawLine3D(intersectionList.at(i).first, intersectionList.at(i+1).first, BLUE);
+            }
+        }
 
         DrawLine3D(line_start, line_end, RED);
 

@@ -10,6 +10,12 @@ void mesh::Add_Model(int id, const char *model_path){
     }
 }
 
+void mesh::Add_Model(int id, Model model){
+    if(!ID_Check(id, models)){
+        models.push_back((multimodel){id, model});
+    }
+}
+
 void mesh::Rem_Model(int id){
     if(!models.empty()){
         for(std::vector<multimodel>::size_type it = 0; it < models.size(); it++){

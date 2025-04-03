@@ -23,6 +23,7 @@ class mesh{
      * ##########################################*/
     
     void Add_Model(int id, const char *model_path); // Add New Model
+    void Add_Model(int id, Model model);
 
     void Rem_Model(int id); // Remove Model
 
