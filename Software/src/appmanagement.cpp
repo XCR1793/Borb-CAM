@@ -138,6 +138,12 @@ void app::Print(int value, int posx, int posy){
     DrawText(buffer, posx, posy, 30, RED);
 }
 
+void app::PrintF(float value, int posx, int posy){
+    char buffer[20];
+    sprintf(buffer, "%.2f", value);
+    DrawText(buffer, posx, posy, 30, RED);
+}
+
 bool app::ID_Check(int id, std::vector<App_Button> &button_array){
     if(!button_array.empty()){
         for(auto item : button_array){

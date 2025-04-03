@@ -59,6 +59,7 @@ class app{
      * ##########################################*/
 
     void Print(int value, int xpos, int ypos);
+    void PrintF(float value, int xpos, int ypos);
 
     private:
     std::vector<App_Button> buttons;

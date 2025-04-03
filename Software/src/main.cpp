@@ -108,20 +108,23 @@ int main(){
         BeginDrawing();
         ClearBackground(DARKGRAY);
 
-        Vector3 plane = models.RotXYD_XYZ((Vector3){x, y, z});
-        Vector3 line_start = {10, 10, 10};
-        Vector3 line_end = {-10, -10, -10};
+        Vector3 plane = models.RotXYD_XYZ((Vector3){0, a, b});
+        Vector3 line_start = {x+10, y+10, z+10};
+        Vector3 line_end   = {x-10, y-10, z-10};
         std::pair<Vector3, bool> intersection = models.IntersectLinePlane(plane, line_start, line_end);
 
-        window.Print(plane.x, 300, 30);
-        window.Print(plane.y, 300, 60);
-        window.Print(plane.z, 300, 90);
+        Model currentmodel = models.Ret_Model(1);
+
+        std::vector<std::pair<Vector3, Vector3>> intersectionList = models.Intersect_Model(currentmodel, plane);
+
+        window.PrintF(plane.x, 300, 30);
+        window.PrintF(plane.y, 300, 60);
+        window.PrintF(plane.z, 300, 90);
         
-        window.Print(intersection.second, 600, 30);
-        window.Print(intersection.first.x, 600, 60);
-        window.Print(intersection.first.y, 600, 90);
-        window.Print(intersection.first.z, 600, 120);
-        
+        window.PrintF(intersection.second, 600, 30);
+        window.PrintF(intersection.first.x, 600, 60);
+        window.PrintF(intersection.first.y, 600, 90);
+        window.PrintF(intersection.first.z, 600, 120);
 
         if(window.Ret_Button(1)){x = x + 1;}
         if(window.Ret_Button(2)){x = x - 1;}
@@ -131,10 +134,10 @@ int main(){
         if(window.Ret_Button(6)){z = z - 1;}
         if(window.Ret_Button(7)){s = s + 0.5;}
         if(window.Ret_Button(8)){s = s - 0.5;}
-        if(window.Ret_Button(9)){a = a + 0.5;}
-        if(window.Ret_Button(10)){a = a - 0.5;}
-        if(window.Ret_Button(11)){b = b + 0.5;}
-        if(window.Ret_Button(12)){b = b - 0.5;}
+        if(window.Ret_Button(9 )){a = a + PI/2;}
+        if(window.Ret_Button(10)){a = a - PI/2;}
+        if(window.Ret_Button(11)){b = b + PI/2;}
+        if(window.Ret_Button(12)){b = b - PI/2;}
         if(window.Ret_Button(13)){c = c + 0.5;}
         if(window.Ret_Button(14)){c = c - 0.5;}
         if(window.Ret_Button(15)){o = o + 0.5;}
@@ -156,7 +159,11 @@ int main(){
 
         BeginMode3D(camera);
 
+        if(!intersectionList.empty()){window.Print(intersectionList.size(), 800, 60);for(long i = 0; i < intersectionList.size()-1; i++){DrawLine3D(intersectionList.at(i).first, intersectionList.at(i+1).first, BLUE);}}
+
         DrawLine3D(line_start, line_end, RED);
+
+        // DrawPlane((Vector3){0, 0, 0}, (Vector2){10, 10}, RED);
 
         models.Run_Models();
 

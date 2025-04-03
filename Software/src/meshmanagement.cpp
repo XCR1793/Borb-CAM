@@ -109,7 +109,7 @@ Vector3 mesh::Deg_Rad(Vector3 angles){
 }
 
 Vector3 mesh::RotXYD_XYZ(Vector3 distance_xrot_yrot){
-    return ((Vector3){(sin(distance_xrot_yrot.y)*cos(distance_xrot_yrot.x), -sin(distance_xrot_yrot.x), cos(distance_xrot_yrot.y)*cos(distance_xrot_yrot.x))});
+    return ((Vector3){sin(distance_xrot_yrot.y)*cos(distance_xrot_yrot.x), -sin(distance_xrot_yrot.x), cos(distance_xrot_yrot.y)*cos(distance_xrot_yrot.x)});
 }
 
 std::pair<Vector3, bool> mesh::IntersectLinePlane(Vector3 planeNormal, Vector3 lineStart, Vector3 lineEnd) {
@@ -132,6 +132,8 @@ std::pair<Vector3, bool> mesh::IntersectLinePlane(Vector3 planeNormal, Vector3 l
     Vector3 intersection = Vector3Add(lineStart, Vector3Scale(lineDir, t));
     return { intersection, true };
 }
+
+
 
 /**##########################################
  * #       Mesh Manipulation Functions      #
@@ -156,7 +158,30 @@ Model mesh::Rotate_Model(Model &model, Vector3 rotatiton){
 }
 
 std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vector3 distance_xrot_yrot){
+    std::vector<std::pair<Vector3, Vector3>> intersectionList;
+    Mesh mesh = model.meshes[0];
 
+    for(long i = 0; i < model.meshes->triangleCount; i++){
+        if(!(mesh.indices == NULL)){
+            int I0 = mesh.indices[i * 3];
+            int I1 = mesh.indices[i * 3 + 1];
+            int I2 = mesh.indices[i * 3 + 2];
+
+            Vector3 v0 = {mesh.vertices[I0 * 3 + 0], mesh.vertices[I0 * 3 + 1], mesh.vertices[I0 * 3 + 2]};
+            Vector3 v1 = {mesh.vertices[I1 * 3 + 0], mesh.vertices[I1 * 3 + 1], mesh.vertices[I1 * 3 + 2]};
+            Vector3 v2 = {mesh.vertices[I2 * 3 + 0], mesh.vertices[I2 * 3 + 1], mesh.vertices[I2 * 3 + 2]};
+            
+            std::pair<Vector3, bool> Intersection0 = IntersectLinePlane(distance_xrot_yrot, v0, v1);
+            std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(distance_xrot_yrot, v1, v2);
+            std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(distance_xrot_yrot, v2, v0);
+
+            if(Intersection0.second){intersectionList.push_back(std::make_pair(Intersection0.first, Intersection0.first));}
+            if(Intersection1.second){intersectionList.push_back(std::make_pair(Intersection1.first, Intersection1.first));}
+            if(Intersection2.second){intersectionList.push_back(std::make_pair(Intersection2.first, Intersection2.first));}
+        }
+    }
+
+    return intersectionList;
 }
 
 /**##########################################
