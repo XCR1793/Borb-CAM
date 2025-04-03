@@ -107,30 +107,30 @@ int main(){
         BeginDrawing();
         ClearBackground(DARKGRAY);
 
-        Vector3 plane = models.RotXYD_XYZ((Vector3){0, a, b});
-        Vector3 line_start = {x+10, y+10, z+10};
-        Vector3 line_end   = {x-10, y-10, z-10};
-        std::pair<Vector3, bool> intersection = models.IntersectLinePlane((Vector3){0, 1, 0}, line_start, line_end);
+        // Vector3 plane = models.RotXYD_XYZ((Vector3){0, a, b});
+        // Vector3 line_start = {x+10, y+10, z+10};
+        // Vector3 line_end   = {x-10, y-10, z-10};
+        // std::pair<Vector3, bool> intersection = models.IntersectLinePlane((Vector3){0, 1, 0}, (Vector3){10, 1, 5}, (Vector3){10, -1, 5});
 
         Model currentmodel = models.Ret_Model(1);
 
-        std::vector<std::pair<Vector3, Vector3>> intersectionList = models.Intersect_Model(currentmodel, plane);
+        std::vector<std::pair<Vector3, Vector3>> intersectionList = models.Intersect_Model(currentmodel, (Vector3){0, 1, 0});
 
-        window.PrintF(plane.x, 300, 30);
-        window.PrintF(plane.y, 300, 60);
-        window.PrintF(plane.z, 300, 90);
+        // window.PrintF(plane.x, 300, 30);
+        // window.PrintF(plane.y, 300, 60);
+        // window.PrintF(plane.z, 300, 90);
         
-        window.PrintF(intersection.second, 600, 30);
-        window.PrintF(intersection.first.x, 600, 60);
-        window.PrintF(intersection.first.y, 600, 90);
-        window.PrintF(intersection.first.z, 600, 120);
+        // window.PrintF(intersection.second, 600, 30);
+        // window.PrintF(intersection.first.x, 600, 60);
+        // window.PrintF(intersection.first.y, 600, 90);
+        // window.PrintF(intersection.first.z, 600, 120);
 
-        if(window.Ret_Button(1)){x = x + 1;}
-        if(window.Ret_Button(2)){x = x - 1;}
-        if(window.Ret_Button(3)){y = y + 1;}
-        if(window.Ret_Button(4)){y = y - 1;}
-        if(window.Ret_Button(5)){z = z + 1;}
-        if(window.Ret_Button(6)){z = z - 1;}
+        if(window.Ret_Button(1)){x = x + 0.5;}
+        if(window.Ret_Button(2)){x = x - 0.5;}
+        if(window.Ret_Button(3)){y = y + 0.5;}
+        if(window.Ret_Button(4)){y = y - 0.5;}
+        if(window.Ret_Button(5)){z = z + 0.5;}
+        if(window.Ret_Button(6)){z = z - 0.5;}
         if(window.Ret_Button(7)){s = s + 0.5;}
         if(window.Ret_Button(8)){s = s - 0.5;}
         if(window.Ret_Button(9 )){a = a + PI/2;}
@@ -152,20 +152,21 @@ int main(){
 
         models.Rotate_Model(currentModel, (Vector3){a, b, c});
 
-        window.Print(o, 100, 10);
+        // window.Print(models.Ret_Model(1).meshes->vertexCount, 600, 30);
 
         models.Reu_Model(1, currentModel);
 
         BeginMode3D(camera);
 
         if(!intersectionList.empty()){
-            window.Print(intersectionList.size(), 800, 60);
+            window.Print(intersectionList.size(), 600, 60);
             for(long i = 0; i < intersectionList.size()-1; i++){
                 DrawLine3D(intersectionList.at(i).first, intersectionList.at(i+1).first, BLUE);
             }
         }
 
-        DrawLine3D(line_start, line_end, RED);
+
+        // DrawLine3D((Vector3){10, 1, 5}, (Vector3){10, -1, 5}, RED);
 
         // DrawPlane((Vector3){0, 0, 0}, (Vector2){10, 10}, RED);
 

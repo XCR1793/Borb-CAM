@@ -167,15 +167,13 @@ std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vec
     std::vector<std::pair<Vector3, Vector3>> intersectionList;
     Mesh mesh = model.meshes[0];
 
-    for(long i = 0; i < model.meshes->triangleCount; i++){
-        if(!(mesh.indices == NULL)){
-            int I0 = mesh.indices[i * 3];
-            int I1 = mesh.indices[i * 3 + 1];
-            int I2 = mesh.indices[i * 3 + 2];
+    for(long i = 0; i < model.meshes->vertexCount; i+= 3){
+        if((model.meshes->vertexCount - i) < 3){return intersectionList;}
+        if(1){
 
-            Vector3 v0 = {mesh.vertices[I0 * 3 + 0], mesh.vertices[I0 * 3 + 1], mesh.vertices[I0 * 3 + 2]};
-            Vector3 v1 = {mesh.vertices[I1 * 3 + 0], mesh.vertices[I1 * 3 + 1], mesh.vertices[I1 * 3 + 2]};
-            Vector3 v2 = {mesh.vertices[I2 * 3 + 0], mesh.vertices[I2 * 3 + 1], mesh.vertices[I2 * 3 + 2]};
+            Vector3 v0 = {mesh.vertices[(i * 1) * 3 + 0], mesh.vertices[(i * 1) * 3 + 1], mesh.vertices[(i * 1) * 3 + 2]};
+            Vector3 v1 = {mesh.vertices[(i * 2) * 3 + 0], mesh.vertices[(i * 2) * 3 + 1], mesh.vertices[(i * 2) * 3 + 2]};
+            Vector3 v2 = {mesh.vertices[(i * 3) * 3 + 0], mesh.vertices[(i * 3) * 3 + 1], mesh.vertices[(i * 3) * 3 + 2]};
             
             std::pair<Vector3, bool> Intersection0 = IntersectLinePlane(distance_xrot_yrot, v0, v1);
             std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(distance_xrot_yrot, v1, v2);
