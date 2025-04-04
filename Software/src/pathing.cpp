@@ -74,6 +74,26 @@ bool path::Default_File(const std::string& fileName, const std::string& extensio
     return true;
 }
 
+bool path::Clear_File() {
+    // Open file to clear its contents
+    std::ofstream outfile(default_file_path, std::ios::trunc); // `std::ios::trunc` ensures the file is cleared
+
+    // Since we're clearing the file, there's no need to write anything back
+    outfile.close();
+    return true;
+}
+
+bool path::Clear_File(const std::string& fileName, const std::string& extension) {
+    std::string filePath = fileName + "." + extension;
+
+    // Open file to clear its contents
+    std::ofstream outfile(filePath, std::ios::trunc); // `std::ios::trunc` ensures the file is cleared
+
+    // Since we're clearing the file, there's no need to write anything back
+    outfile.close();
+    return true;
+}
+
 /**##########################################
  * #               Gcode Tools              #
  * ##########################################*/

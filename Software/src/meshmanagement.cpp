@@ -6,13 +6,15 @@
 
 void mesh::Add_Model(int id, const char *model_path){
     if(!ID_Check(id, models)){
-        models.push_back((multimodel){id, LoadModel(model_path)});
+        models.push_back((multimodel){id, Indices_Check(LoadModel(model_path))});
+        UploadMesh(&Ret_Model(id).meshes[0], true);
     }
 }
 
 void mesh::Add_Model(int id, Model model){
     if(!ID_Check(id, models)){
-        models.push_back((multimodel){id, model});
+        models.push_back((multimodel){id, Indices_Check(model)});
+        UploadMesh(&model.meshes[0], true);
     }
 }
 
@@ -163,17 +165,41 @@ Model mesh::Rotate_Model(Model &model, Vector3 rotatiton){
     return model;
 }
 
+Model mesh::Indices_Check(Model model){
+    Mesh mesh = model.meshes[0];
+
+    if (mesh.indices == NULL && mesh.vertexCount > 0) {
+        mesh.triangleCount = mesh.vertexCount / 3;
+
+        mesh.indices = (unsigned short*)malloc(mesh.triangleCount * 3 * sizeof(unsigned short));
+        for (int i = 0; i < mesh.triangleCount * 3; i++) {
+            mesh.indices[i] = i;
+        }
+
+        mesh.vaoId = 0; // Reset VAO since we're reuploading mesh
+        UploadMesh(&mesh, true);
+    }
+
+    model.meshes[0] = mesh;
+
+    return model;
+}
+
 std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vector3 distance_xrot_yrot){
     std::vector<std::pair<Vector3, Vector3>> intersectionList;
     Mesh mesh = model.meshes[0];
 
     for(long i = 0; i < model.meshes->vertexCount; i+= 3){
         if((model.meshes->vertexCount - i) < 3){return intersectionList;}
-        if(1){
+        if(model.meshes->indices != NULL){
 
-            Vector3 v0 = {mesh.vertices[(i * 1) * 3 + 0], mesh.vertices[(i * 1) * 3 + 1], mesh.vertices[(i * 1) * 3 + 2]};
-            Vector3 v1 = {mesh.vertices[(i * 2) * 3 + 0], mesh.vertices[(i * 2) * 3 + 1], mesh.vertices[(i * 2) * 3 + 2]};
-            Vector3 v2 = {mesh.vertices[(i * 3) * 3 + 0], mesh.vertices[(i * 3) * 3 + 1], mesh.vertices[(i * 3) * 3 + 2]};
+            unsigned short I0 = model.meshes->indices[i];
+            unsigned short I1 = model.meshes->indices[i + 2];
+            unsigned short I2 = model.meshes->indices[i + 3];
+
+            Vector3 v0 = {mesh.vertices[I0 + 0], mesh.vertices[I0 + 1], mesh.vertices[I0 + 2]};
+            Vector3 v1 = {mesh.vertices[I1 + 0], mesh.vertices[I1 + 1], mesh.vertices[I1 + 2]};
+            Vector3 v2 = {mesh.vertices[I2 + 0], mesh.vertices[I2 + 1], mesh.vertices[I2 + 2]};
             
             std::pair<Vector3, bool> Intersection0 = IntersectLinePlane(distance_xrot_yrot, v0, v1);
             std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(distance_xrot_yrot, v1, v2);

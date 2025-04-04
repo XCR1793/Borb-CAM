@@ -22,6 +22,9 @@ class path{
 
     bool Default_File(const std::string& fileName, const std::string& extension);
 
+    bool Clear_File();
+    bool Clear_File(const std::string& fileName, const std::string& extension);
+
     /**##########################################
      * #               Gcode Tools              #
      * ##########################################*/

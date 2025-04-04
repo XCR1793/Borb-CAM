@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <chrono>
 #include <vector>
 #include <string>
 #include <raylib.h>
@@ -70,36 +71,15 @@ int main(){
     path paths;
     paths.Create_File("src/OwO", "gcode");
 
-    std::vector<std::pair<Vector3, Vector3>> pathPositions = {
-        { {1.2f, 3.4f, 5.6f}, {7.8f, 9.0f, 2.1f} },
-        { {4.3f, 6.7f, 8.9f}, {0.2f, 1.4f, 3.6f} },
-        { {9.1f, 7.3f, 2.5f}, {4.8f, 6.9f, 1.0f} },
-        { {5.5f, 2.2f, 3.3f}, {7.7f, 8.8f, 9.9f} },
-        { {0.0f, 1.1f, 2.2f}, {3.3f, 4.4f, 5.5f} },
-        { {6.6f, 7.7f, 8.8f}, {9.9f, 0.1f, 1.2f} },
-        { {2.3f, 3.4f, 4.5f}, {5.6f, 6.7f, 7.8f} },
-        { {8.9f, 9.0f, 0.1f}, {1.2f, 2.3f, 3.4f} },
-        { {4.5f, 5.6f, 6.7f}, {7.8f, 8.9f, 9.0f} },
-        { {0.1f, 1.2f, 2.3f}, {3.4f, 4.5f, 5.6f} },
-        { {6.7f, 7.8f, 8.9f}, {9.0f, 0.1f, 1.2f} },
-        { {2.2f, 3.3f, 4.4f}, {5.5f, 6.6f, 7.7f} },
-        { {8.8f, 9.9f, 0.0f}, {1.1f, 2.2f, 3.3f} },
-        { {4.4f, 5.5f, 6.6f}, {7.7f, 8.8f, 9.9f} },
-        { {0.3f, 1.4f, 2.5f}, {3.6f, 4.7f, 5.8f} },
-        { {6.9f, 7.0f, 8.1f}, {9.2f, 0.3f, 1.4f} },
-        { {2.5f, 3.6f, 4.7f}, {5.8f, 6.9f, 7.0f} },
-        { {8.1f, 9.2f, 0.3f}, {1.4f, 2.5f, 3.6f} },
-        { {4.7f, 5.8f, 6.9f}, {7.0f, 8.1f, 9.2f} },
-        { {0.4f, 1.5f, 2.6f}, {3.7f, 4.8f, 5.9f} },
-        { {6.0f, 7.1f, 8.2f}, {9.3f, 0.4f, 1.5f} },
-        { {2.6f, 3.7f, 4.8f}, {5.9f, 6.0f, 7.1f} },
-        { {8.2f, 9.3f, 0.4f}, {1.5f, 2.6f, 3.7f} },
-        { {4.8f, 5.9f, 6.0f}, {7.1f, 8.2f, 9.3f} },
-        { {0.5f, 1.6f, 2.7f}, {3.8f, 4.9f, 6.0f} }
-    };
-    
-    
-    paths.Path_to_Gcode1(pathPositions);
+    std::vector<std::pair<Vector3, Vector3>> pathPositions;
+    //     { {1.2f, 3.4f, 5.6f}, {7.8f, 9.0f, 2.1f} }
+    // };
+
+    // paths.Path_to_Gcode1(pathPositions);
+
+    auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    auto prev_time = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
 
     while(!WindowShouldClose()){
 
@@ -115,6 +95,19 @@ int main(){
         Model currentmodel = models.Ret_Model(1);
 
         std::vector<std::pair<Vector3, Vector3>> intersectionList = models.Intersect_Model(currentmodel, (Vector3){0, 1, 0});
+
+        auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        if(epoch_seconds != prev_time){
+            prev_time = epoch_seconds;
+            pathPositions.clear();
+            for(auto it : intersectionList){
+                pathPositions.push_back(std::pair<Vector3, Vector3>(it.first, (Vector3){0, 0, 0}));
+            }
+            paths.Clear_File();
+            paths.Path_to_Gcode1(pathPositions);
+        }
+        window.Print(pathPositions.size(), 500, 500);
+
 
         // window.PrintF(plane.x, 300, 30);
         // window.PrintF(plane.y, 300, 60);
@@ -156,15 +149,18 @@ int main(){
 
         models.Reu_Model(1, currentModel);
 
+        if(models.Ret_Model(1).meshes->indices != NULL){
+            window.Print(1234, 600, 120);
+        }
+
         BeginMode3D(camera);
 
         if(!intersectionList.empty()){
-            window.Print(intersectionList.size(), 600, 60);
+            // window.Print(1, 600, 60);
             for(long i = 0; i < intersectionList.size()-1; i++){
                 DrawLine3D(intersectionList.at(i).first, intersectionList.at(i+1).first, BLUE);
             }
         }
-
 
         // DrawLine3D((Vector3){10, 1, 5}, (Vector3){10, -1, 5}, RED);
 
