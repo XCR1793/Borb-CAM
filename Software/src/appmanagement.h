@@ -8,6 +8,9 @@
 #include <raymath.h>
 #include <rlights.h>
 #include <rlgl.h>
+#include <string>
+#include <fstream>
+#include <sstream>
 
 struct App_Button{
     int id;
@@ -61,9 +64,22 @@ class app{
     void Print(int value, int xpos, int ypos);
     void PrintF(float value, int xpos, int ypos);
 
+    bool Create_File(const std::string& fileName, const std::string& extension);
+
+    bool Write_File(const std::string& fileName, const std::string& extension, long lineNumber, const std::string& content);
+
+    bool Write_File_Last(const std::string& fileName, const std::string& extension, const std::string& content);
+
+    bool Default_File(const std::string& fileName, const std::string& extension);
+
+    bool Clear_File();
+    bool Clear_File(const std::string& fileName, const std::string& extension);
+
     private:
     std::vector<App_Button> buttons;
     Camera Internal_Camera = {0};
+    std::string default_file_path;
+    long line = 0;
 
     /**##########################################
      * #            General Functions           #

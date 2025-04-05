@@ -26,6 +26,8 @@ int main(){
     Shader shader = window.Initialise_Shader();
     window.Initialise_Lights(shader);
 
+    window.Create_File("src/Debug", "txt");
+
     window.Add_Button(1, 20, 60, 30, 100, "X+");
     window.Add_Button(2, 20, 60, 120, 100, "X-");
     window.Add_Button(3, 20, 60, 30, 150, "Y+");
@@ -44,6 +46,9 @@ int main(){
     window.Add_Button(16, 20, 60, 120, 450, "O-");
 
     mesh models;
+
+    // Mesh cubeMesh = GenMeshCube(2.0f, 2.0f, 2.0f); // width, height, length
+    // Model cubeModel = LoadModelFromMesh(cubeMesh);
 
     models.Add_Model(1, "src/model.obj");
     models.Add_Model(2, "src/model.obj");
@@ -78,8 +83,7 @@ int main(){
     // paths.Path_to_Gcode1(pathPositions);
 
     auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    auto prev_time = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
+    auto prev_time = epoch_seconds;
 
     while(!WindowShouldClose()){
 
@@ -105,18 +109,25 @@ int main(){
             }
             paths.Clear_File();
             paths.Path_to_Gcode1(pathPositions);
+
+            window.Clear_File();
+            for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
+                auto vertexCount = models.Ret_Model(1).meshes[i].vertexCount;
+                auto triangleCount = models.Ret_Model(1).meshes[i].triangleCount;
+                window.Write_File_Last("src/Debug", "txt", "Mesh Number: " + std::to_string(i));
+                window.Write_File_Last("src/Debug", "txt", "Vertex Count: " + std::to_string(vertexCount));
+                window.Write_File_Last("src/Debug", "txt", "Triangle Count: " + std::to_string(triangleCount));
+
+                for(int j = 0; j < triangleCount; j++){
+                    window.Write_File_Last("src/Debug", "txt",
+                        " V" + std::to_string(j) + ": " + 
+                        std::to_string(models.Ret_Model(1).meshes[i].vertices[j + 0]) + " " +
+                        std::to_string(models.Ret_Model(1).meshes[i].vertices[j + 1]) + " " +
+                        std::to_string(models.Ret_Model(1).meshes[i].vertices[j + 2]) + " "
+                    );
+                }
+            }
         }
-        window.Print(pathPositions.size(), 500, 500);
-
-
-        // window.PrintF(plane.x, 300, 30);
-        // window.PrintF(plane.y, 300, 60);
-        // window.PrintF(plane.z, 300, 90);
-        
-        // window.PrintF(intersection.second, 600, 30);
-        // window.PrintF(intersection.first.x, 600, 60);
-        // window.PrintF(intersection.first.y, 600, 90);
-        // window.PrintF(intersection.first.z, 600, 120);
 
         if(window.Ret_Button(1)){x = x + 0.5;}
         if(window.Ret_Button(2)){x = x - 0.5;}
@@ -145,26 +156,26 @@ int main(){
 
         models.Rotate_Model(currentModel, (Vector3){a, b, c});
 
-        // window.Print(models.Ret_Model(1).meshes->vertexCount, 600, 30);
-
         models.Reu_Model(1, currentModel);
 
-        if(models.Ret_Model(1).meshes->indices != NULL){
-            window.Print(1234, 600, 120);
+        int seg = 30;
+
+        window.Print(models.Ret_Model(1).meshCount, 700, seg);
+        seg += 30;
+        for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
+            window.Print(i, 750, seg);
+            window.Print(models.Ret_Model(1).meshes[i].vertexCount, 850, seg);
+            window.Print(models.Ret_Model(1).meshes[i].triangleCount, 950, seg);
+            seg += 30;
         }
 
         BeginMode3D(camera);
 
         if(!intersectionList.empty()){
-            // window.Print(1, 600, 60);
-            for(long i = 0; i < intersectionList.size()-1; i++){
+            for(std::size_t i = 0; i < intersectionList.size()-1; i++){
                 DrawLine3D(intersectionList.at(i).first, intersectionList.at(i+1).first, BLUE);
             }
         }
-
-        // DrawLine3D((Vector3){10, 1, 5}, (Vector3){10, -1, 5}, RED);
-
-        // DrawPlane((Vector3){0, 0, 0}, (Vector2){10, 10}, RED);
 
         models.Run_Models();
 

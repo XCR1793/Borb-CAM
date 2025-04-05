@@ -232,7 +232,7 @@ bool path::G91(){
  * ##########################################*/
 
 bool path::Path_to_Gcode0(std::vector<std::pair<Vector3, Vector3>>& positions){
-    for(auto it = 0; it < positions.size(); it++){
+    for(std::size_t it = 0; it < positions.size(); it++){
         Vector3 position = positions.at(it).first;
         Vector3 rotation = positions.at(it).second;
         G0(position.x, position.y, position.z, rotation.x, rotation.y, rotation.z);
@@ -241,7 +241,7 @@ bool path::Path_to_Gcode0(std::vector<std::pair<Vector3, Vector3>>& positions){
 }
 
 bool path::Path_to_Gcode1(std::vector<std::pair<Vector3, Vector3>>& positions){
-    for(auto it = 0; it < positions.size(); it++){
+    for(std::size_t it = 0; it < positions.size(); it++){
         Vector3 position = positions.at(it).first;
         Vector3 rotation = positions.at(it).second;
         G1(position.x, position.y, position.z, rotation.x, rotation.y, rotation.z);

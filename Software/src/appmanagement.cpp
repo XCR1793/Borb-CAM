@@ -152,3 +152,93 @@ bool app::ID_Check(int id, std::vector<App_Button> &button_array){
     }
     return false;
 }
+
+bool app::Create_File(const std::string& fileName, const std::string& extension){
+    std::string filePath = fileName + "." + extension;
+
+    if(FileExists(filePath.c_str())){TraceLog(LOG_INFO, "Overriding Existing File: %s", filePath.c_str());}
+
+    Default_File(fileName, extension);
+
+    return SaveFileData(filePath.c_str(), nullptr, 0);
+}
+
+bool app::Write_File(const std::string& fileName, const std::string& extension, long lineNumber, const std::string& content){
+    std::string filePath = fileName + "." + extension;
+
+    // Load existing lines
+    std::vector<std::string> lines;
+    std::ifstream infile(filePath);
+    std::string line;
+    while (std::getline(infile, line)) {
+        lines.push_back(line);
+    }
+    infile.close();
+
+    // Extend file if necessary
+    if (lineNumber >= static_cast<long>(lines.size())) {
+        lines.resize(lineNumber + 1, "");
+    }
+
+    // Set the line
+    lines[lineNumber] = content;
+
+    // Write lines back to file
+    std::ofstream outfile(filePath);
+    if (!outfile.is_open()) {
+        TraceLog(LOG_WARNING, "Failed to open file for writing: %s", filePath.c_str());
+        return false;
+    }
+
+    for (size_t i = 0; i < lines.size(); ++i) {
+        outfile << lines[i];
+        if (i != lines.size() - 1) {
+            outfile << "\n";
+        }
+    }
+
+    outfile.close();
+    return true;
+}
+
+bool app::Write_File_Last(const std::string& fileName, const std::string& extension, const std::string& content) {
+    std::string filePath = fileName + "." + extension;
+
+    if(extension == ""){filePath = fileName;}
+
+    std::ofstream outfile(filePath, std::ios::app); // Open in append mode
+    if (!outfile.is_open()) {
+        TraceLog(LOG_WARNING, "Failed to open file for writing: %s", filePath.c_str());
+        return false;
+    }
+
+    // Always write content as a new line at the end
+    outfile << content << "\n";
+    outfile.close();
+    return true;
+}
+
+bool app::Default_File(const std::string& fileName, const std::string& extension){
+    default_file_path = fileName + "." + extension;
+    return true;
+}
+
+bool app::Clear_File() {
+    // Open file to clear its contents
+    std::ofstream outfile(default_file_path, std::ios::trunc); // `std::ios::trunc` ensures the file is cleared
+
+    // Since we're clearing the file, there's no need to write anything back
+    outfile.close();
+    return true;
+}
+
+bool app::Clear_File(const std::string& fileName, const std::string& extension) {
+    std::string filePath = fileName + "." + extension;
+
+    // Open file to clear its contents
+    std::ofstream outfile(filePath, std::ios::trunc); // `std::ios::trunc` ensures the file is cleared
+
+    // Since we're clearing the file, there's no need to write anything back
+    outfile.close();
+    return true;
+}
