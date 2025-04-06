@@ -6,7 +6,6 @@
 
 void mesh::Add_Model(int id, const char *model_path){
     if(!ID_Check(id, models)){
-        // models.push_back((multimodel){id, Indices_Check(LoadModel(model_path))});
         models.push_back((multimodel){id, LoadModel(model_path)});
         UploadMesh(&Ret_Model(id).meshes[0], true);
     }
@@ -14,7 +13,6 @@ void mesh::Add_Model(int id, const char *model_path){
 
 void mesh::Add_Model(int id, Model model){
     if(!ID_Check(id, models)){
-        // models.push_back((multimodel){id, Indices_Check(model)});
         models.push_back((multimodel){id, model});
 
         UploadMesh(&model.meshes[0], true);
@@ -168,37 +166,30 @@ Model mesh::Rotate_Model(Model &model, Vector3 rotatiton){
     return model;
 }
 
-Model mesh::Indices_Check(Model model){
-    Mesh mesh = model.meshes[0];
 
-    if (mesh.indices == NULL && mesh.vertexCount > 0) {
-        mesh.triangleCount = mesh.vertexCount / 3;
+std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model model){
+    std::vector<std::vector<std::pair<int, Triangle>>> All_Triangles;
 
-        mesh.indices = (unsigned short*)malloc(mesh.triangleCount * 3 * sizeof(unsigned short));
-        for (int i = 0; i < mesh.triangleCount * 3; i++) {
-            mesh.indices[i] = i;
+    for (long i = 0; i < model.meshCount; i++){
+        std::vector<std::pair<int, Triangle>> Mesh_Triangles;
+        float* vertices = model.meshes[i].vertices;
+        long vertexCount = model.meshes[i].vertexCount;
+
+        for (long j = 0; j < vertexCount; j += 3){
+            Triangle tri = {
+                (Vector3){vertices[(j * 3) + 0], vertices[(j * 3) + 1], vertices[(j * 3) + 2]},
+                (Vector3){vertices[(j * 3) + 3], vertices[(j * 3) + 4], vertices[(j * 3) + 5]},
+                (Vector3){vertices[(j * 3) + 6], vertices[(j * 3) + 7], vertices[(j * 3) + 8]},
+            };
+
+            Mesh_Triangles.emplace_back(i, tri);
         }
 
-        mesh.vaoId = 0; // Reset VAO since we're reuploading mesh
-        UploadMesh(&mesh, true);
+        All_Triangles.push_back(Mesh_Triangles);
     }
 
-    model.meshes[0] = mesh;
-
-    return model;
+    return All_Triangles;
 }
-
-Model Indices_Check(Model model) {
-
-    return model;
-}
-
-// std::vector<Vector3> mesh::List_Vertices(Model model){
-//     float* vertices = model.meshes->vertices;
-//     for(int i = 0; i < model.meshes->vertexCount; i++){
-
-//     }
-// }
 
 std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vector3 distance_xrot_yrot){
     std::vector<std::pair<Vector3, Vector3>> intersectionList;

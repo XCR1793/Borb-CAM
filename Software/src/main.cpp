@@ -160,9 +160,9 @@ int main(){
 
         Model currentModel = models.Ret_Model(1);
 
-        models.Scale_Model(currentModel, s);
+        models.Scale_Model(currentModel, s * 0.03);
 
-        models.Rotate_Model(currentModel, (Vector3){a, b, c});
+        models.Rotate_Model(currentModel, (Vector3){a - PI/2, b, c});
 
         models.Reu_Model(1, currentModel);
 
@@ -179,24 +179,16 @@ int main(){
 
         BeginMode3D(camera);
 
-        // auto triangleCount = models.Ret_Model(1).meshes[1].triangleCount;
-        for(int i = 0; i < o; i++){
-            auto Vertex = models.Ret_Model(1).meshes[1].vertices;
-            DrawSphere((Vector3){Vertex[(i*3)+0], Vertex[(i*3)+1], Vertex[(i*3)+2]}, 0.01, RED);
-        }
-
-        for(int i = 0; i < o; i++){
-            if((static_cast<int>(i)%3) == 0){
-                auto Vertex = models.Ret_Model(1).meshes[1].vertices;
-                DrawTriangle3D( (Vector3){Vertex[(static_cast<int>(i)*3)+0], Vertex[(static_cast<int>(i)*3)+1], Vertex[(static_cast<int>(i)*3)+2]},
-                                (Vector3){Vertex[(static_cast<int>(i)*3)+3], Vertex[(static_cast<int>(i)*3)+4], Vertex[(static_cast<int>(i)*3)+5]},
-                                (Vector3){Vertex[(static_cast<int>(i)*3)+6], Vertex[(static_cast<int>(i)*3)+7], Vertex[(static_cast<int>(i)*3)+8]},
-                                BLUE);
+        std::vector<std::vector<std::pair<int, Triangle>>> triangle_list = models.List_Triangles(models.Ret_Model(1));
+        for(auto it : triangle_list){
+            for(auto ti : it){
+                DrawTriangle3D(ti.second.Vertex1, ti.second.Vertex2, ti.second.Vertex3, BLUE);
             }
         }
 
-        // if(o > models.Ret_Model(1).meshes[1].vertexCount * 2.5){o = 0;}
-        o = models.Ret_Model(1).meshes[1].vertexCount * 2.5;
+        window.Print(models.List_Triangles(models.Ret_Model(1)).at(0).at(0).first, 500, 500);
+
+        o = models.Ret_Model(1).meshes[1].vertexCount;
 
 
         if(!intersectionList.empty()){

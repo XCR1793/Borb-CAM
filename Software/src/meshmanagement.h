@@ -15,6 +15,12 @@ struct multimodel{
     Color colour = ORANGE;
 };
 
+struct Triangle{
+    Vector3 Vertex1;
+    Vector3 Vertex2;
+    Vector3 Vertex3;
+};
+
 class mesh{
     public:
     
@@ -74,9 +80,7 @@ class mesh{
 
     Model Rotate_Model(Model &model, Vector3 rotatiton);
 
-    Model Indices_Check(Model model);
-
-    // std::vector<Vector3> List_Vertices(Model model);
+    std::vector<std::vector<std::pair<int, Triangle>>> List_Triangles(Model model);
 
     std::vector<std::pair<Vector3, Vector3>> Intersect_Model(Model &model, Vector3 distance_xrot_yrot);
 
