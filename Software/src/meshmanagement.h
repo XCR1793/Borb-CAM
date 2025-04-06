@@ -61,7 +61,7 @@ class mesh{
 
     Vector3 RotXYD_XYZ(Vector3 distance_xrot_yrot);
 
-    std::pair<Vector3, bool> IntersectLinePlane(Vector3 planeNormal, Vector3 lineStart, Vector3 lineEnd);
+    std::pair<Vector3, bool> IntersectLinePlane(Vector4 planeNormal, Vector3 lineStart, Vector3 lineEnd);
 
     /**
      * Add point to point, to line equation
@@ -82,7 +82,7 @@ class mesh{
 
     std::vector<std::vector<std::pair<int, Triangle>>> List_Triangles(Model model);
 
-    std::vector<std::pair<Vector3, Vector3>> Intersect_Model(Model &model, Vector3 distance_xrot_yrot);
+    std::vector<std::pair<Vector3, Vector3>> Intersect_Model(Model &model, Vector4 Coeff_abcd);
 
     
 

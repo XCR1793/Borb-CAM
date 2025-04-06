@@ -117,24 +117,44 @@ Vector3 mesh::Deg_Rad(Vector3 angles){
     return ((Vector3){Deg_Rad(angles.x), Deg_Rad(angles.y), Deg_Rad(angles.z)});
 }
 
-Vector3 mesh::RotXYD_XYZ(Vector3 distance_xrot_yrot){
-    return ((Vector3){sin(distance_xrot_yrot.y)*cos(distance_xrot_yrot.x), -sin(distance_xrot_yrot.x), cos(distance_xrot_yrot.y)*cos(distance_xrot_yrot.x)});
+Vector3 mesh::RotXYD_XYZ(Vector3 distance_rotX_rotY) {
+    float d = distance_rotX_rotY.x;
+    float rx = distance_rotX_rotY.y;
+    float ry = distance_rotX_rotY.z;
+
+    // Compute unit normal vector
+    float a = sin(ry) * cos(rx);
+    float b = -sin(rx);
+    float c = cos(ry) * cos(rx);
+
+    // Normalize the normal
+    float length = sqrt(a*a + b*b + c*c);
+    a /= length;
+    b /= length;
+    c /= length;
+
+    // Return unit normal vector; the plane equation is ax + by + cz = d
+    return (Vector3){a, b, c};
 }
 
-std::pair<Vector3, bool> mesh::IntersectLinePlane(Vector3 planeNormal, Vector3 lineStart, Vector3 lineEnd) {
-    Vector3 lineDir = Vector3Subtract(lineEnd, lineStart);
-    float denom = Vector3DotProduct(planeNormal, lineDir);
+
+
+std::pair<Vector3, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Vector3 lineStart, Vector3 lineEnd) {
+    Vector3 lineDir = Vector3Subtract(lineEnd, lineStart);  // Direction of the line
+    Vector3 normal = { planeNormal.x, planeNormal.y, planeNormal.z };  // Extract plane normal (a, b, c)
+    float denom = Vector3DotProduct(normal, lineDir);  // Dot product between plane normal and line direction
 
     if (fabsf(denom) < 1e-6f) {
         // Line is parallel to the plane
         return { Vector3Zero(), false };
     }
 
-    // Plane goes through origin: planeNormal · P = 0
-    float t = -Vector3DotProduct(planeNormal, lineStart) / denom;
+    // Compute t using the plane equation ax + by + cz = d
+    float numerator = planeNormal.w - Vector3DotProduct(normal, lineStart);
+    float t = numerator / denom;
 
     if (t < 0.0f || t > 1.0f) {
-        // Intersection not on the segment
+        // Intersection is outside the segment
         return { Vector3Zero(), false };
     }
 
@@ -191,47 +211,22 @@ std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model mo
     return All_Triangles;
 }
 
-std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vector3 distance_xrot_yrot){
+std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
     std::vector<std::pair<Vector3, Vector3>> intersectionList;
 
     std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = List_Triangles(model);
 
     for(auto perMesh : Triangle_List){
         for(auto perTriangle : perMesh){
-            std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(distance_xrot_yrot, perTriangle.second.Vertex1, perTriangle.second.Vertex3);
-            std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(distance_xrot_yrot, perTriangle.second.Vertex2, perTriangle.second.Vertex1);
-            std::pair<Vector3, bool> Intersection3 = IntersectLinePlane(distance_xrot_yrot, perTriangle.second.Vertex3, perTriangle.second.Vertex2);
+            std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex1, perTriangle.second.Vertex3);
+            std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex2, perTriangle.second.Vertex1);
+            std::pair<Vector3, bool> Intersection3 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex3, perTriangle.second.Vertex2);
         
             if(Intersection1.second){intersectionList.push_back(std::make_pair(Intersection1.first, (Vector3){}));}
             if(Intersection2.second){intersectionList.push_back(std::make_pair(Intersection2.first, (Vector3){}));}
             if(Intersection3.second){intersectionList.push_back(std::make_pair(Intersection3.first, (Vector3){}));}
         }
     }
-
-
-    // Mesh mesh = model.meshes[0];
-
-    // for(long i = 0; i < model.meshes->vertexCount; i+= 3){
-    //     if((model.meshes->vertexCount - i) < 3){return intersectionList;}
-    //     if(model.meshes->indices != NULL){
-
-    //         unsigned short I0 = model.meshes->indices[i];
-    //         unsigned short I1 = model.meshes->indices[i + 3];
-    //         unsigned short I2 = model.meshes->indices[i + 9];
-
-    //         Vector3 v0 = {mesh.vertices[I0 + 0], mesh.vertices[I0 + 1], mesh.vertices[I0 + 2]};
-    //         Vector3 v1 = {mesh.vertices[I1 + 0], mesh.vertices[I1 + 1], mesh.vertices[I1 + 2]};
-    //         Vector3 v2 = {mesh.vertices[I2 + 0], mesh.vertices[I2 + 1], mesh.vertices[I2 + 2]};
-            
-    //         std::pair<Vector3, bool> Intersection0 = IntersectLinePlane(distance_xrot_yrot, v0, v1);
-    //         std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(distance_xrot_yrot, v1, v2);
-    //         std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(distance_xrot_yrot, v2, v0);
-
-    //         if(Intersection0.second){intersectionList.push_back(std::make_pair(Intersection0.first, Intersection0.first));}
-    //         if(Intersection1.second){intersectionList.push_back(std::make_pair(Intersection1.first, Intersection1.first));}
-    //         if(Intersection2.second){intersectionList.push_back(std::make_pair(Intersection2.first, Intersection2.first));}
-    //     }
-    // }
 
     return intersectionList;
 }

@@ -100,7 +100,13 @@ int main(){
 
         Model currentmodel = models.Ret_Model(1);
 
-        std::vector<std::pair<Vector3, Vector3>> intersectionList = models.Intersect_Model(currentmodel, (Vector3){0, 1, 0});
+        std::vector<std::pair<Vector3, Vector3>> intersectionList;
+
+        for(float i = -1; i < 1; i += 0.2f) {
+            std::vector<std::pair<Vector3, Vector3>> result = models.Intersect_Model(currentmodel, (Vector4){0, 1, 0, i});
+            intersectionList.insert(intersectionList.end(), result.begin(), result.end());
+        }
+        
 
         auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         // if((o == 0.5) && (epoch_seconds != prev_time)){
@@ -158,13 +164,11 @@ int main(){
 
         models.Rep_Model(1, (Vector3){x, y, z});
 
-        Model currentModel = models.Ret_Model(1);
+        models.Scale_Model(currentmodel, s);
 
-        models.Scale_Model(currentModel, s);
+        models.Rotate_Model(currentmodel, (Vector3){a, b, c});
 
-        models.Rotate_Model(currentModel, (Vector3){a, b, c});
-
-        models.Reu_Model(1, currentModel);
+        models.Reu_Model(1, currentmodel);
 
         int seg = 30;
 
