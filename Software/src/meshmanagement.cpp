@@ -193,29 +193,45 @@ std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model mo
 
 std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vector3 distance_xrot_yrot){
     std::vector<std::pair<Vector3, Vector3>> intersectionList;
-    Mesh mesh = model.meshes[0];
 
-    for(long i = 0; i < model.meshes->vertexCount; i+= 3){
-        if((model.meshes->vertexCount - i) < 3){return intersectionList;}
-        if(model.meshes->indices != NULL){
+    std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = List_Triangles(model);
 
-            unsigned short I0 = model.meshes->indices[i];
-            unsigned short I1 = model.meshes->indices[i + 3];
-            unsigned short I2 = model.meshes->indices[i + 9];
-
-            Vector3 v0 = {mesh.vertices[I0 + 0], mesh.vertices[I0 + 1], mesh.vertices[I0 + 2]};
-            Vector3 v1 = {mesh.vertices[I1 + 0], mesh.vertices[I1 + 1], mesh.vertices[I1 + 2]};
-            Vector3 v2 = {mesh.vertices[I2 + 0], mesh.vertices[I2 + 1], mesh.vertices[I2 + 2]};
-            
-            std::pair<Vector3, bool> Intersection0 = IntersectLinePlane(distance_xrot_yrot, v0, v1);
-            std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(distance_xrot_yrot, v1, v2);
-            std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(distance_xrot_yrot, v2, v0);
-
-            if(Intersection0.second){intersectionList.push_back(std::make_pair(Intersection0.first, Intersection0.first));}
-            if(Intersection1.second){intersectionList.push_back(std::make_pair(Intersection1.first, Intersection1.first));}
-            if(Intersection2.second){intersectionList.push_back(std::make_pair(Intersection2.first, Intersection2.first));}
+    for(auto perMesh : Triangle_List){
+        for(auto perTriangle : perMesh){
+            std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(distance_xrot_yrot, perTriangle.second.Vertex1, perTriangle.second.Vertex3);
+            std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(distance_xrot_yrot, perTriangle.second.Vertex2, perTriangle.second.Vertex1);
+            std::pair<Vector3, bool> Intersection3 = IntersectLinePlane(distance_xrot_yrot, perTriangle.second.Vertex3, perTriangle.second.Vertex2);
+        
+            if(Intersection1.second){intersectionList.push_back(std::make_pair(Intersection1.first, (Vector3){}));}
+            if(Intersection2.second){intersectionList.push_back(std::make_pair(Intersection2.first, (Vector3){}));}
+            if(Intersection3.second){intersectionList.push_back(std::make_pair(Intersection3.first, (Vector3){}));}
         }
     }
+
+
+    // Mesh mesh = model.meshes[0];
+
+    // for(long i = 0; i < model.meshes->vertexCount; i+= 3){
+    //     if((model.meshes->vertexCount - i) < 3){return intersectionList;}
+    //     if(model.meshes->indices != NULL){
+
+    //         unsigned short I0 = model.meshes->indices[i];
+    //         unsigned short I1 = model.meshes->indices[i + 3];
+    //         unsigned short I2 = model.meshes->indices[i + 9];
+
+    //         Vector3 v0 = {mesh.vertices[I0 + 0], mesh.vertices[I0 + 1], mesh.vertices[I0 + 2]};
+    //         Vector3 v1 = {mesh.vertices[I1 + 0], mesh.vertices[I1 + 1], mesh.vertices[I1 + 2]};
+    //         Vector3 v2 = {mesh.vertices[I2 + 0], mesh.vertices[I2 + 1], mesh.vertices[I2 + 2]};
+            
+    //         std::pair<Vector3, bool> Intersection0 = IntersectLinePlane(distance_xrot_yrot, v0, v1);
+    //         std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(distance_xrot_yrot, v1, v2);
+    //         std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(distance_xrot_yrot, v2, v0);
+
+    //         if(Intersection0.second){intersectionList.push_back(std::make_pair(Intersection0.first, Intersection0.first));}
+    //         if(Intersection1.second){intersectionList.push_back(std::make_pair(Intersection1.first, Intersection1.first));}
+    //         if(Intersection2.second){intersectionList.push_back(std::make_pair(Intersection2.first, Intersection2.first));}
+    //     }
+    // }
 
     return intersectionList;
 }

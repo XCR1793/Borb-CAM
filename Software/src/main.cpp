@@ -160,9 +160,9 @@ int main(){
 
         Model currentModel = models.Ret_Model(1);
 
-        models.Scale_Model(currentModel, s * 0.03);
+        models.Scale_Model(currentModel, s);
 
-        models.Rotate_Model(currentModel, (Vector3){a - PI/2, b, c});
+        models.Rotate_Model(currentModel, (Vector3){a, b, c});
 
         models.Reu_Model(1, currentModel);
 
@@ -179,14 +179,14 @@ int main(){
 
         BeginMode3D(camera);
 
-        std::vector<std::vector<std::pair<int, Triangle>>> triangle_list = models.List_Triangles(models.Ret_Model(1));
-        for(auto it : triangle_list){
-            for(auto ti : it){
-                DrawTriangle3D(ti.second.Vertex1, ti.second.Vertex2, ti.second.Vertex3, BLUE);
-            }
-        }
+        // std::vector<std::vector<std::pair<int, Triangle>>> triangle_list = models.List_Triangles(models.Ret_Model(1));
+        // for(auto it : triangle_list){
+        //     for(auto ti : it){
+        //         DrawTriangle3D(ti.second.Vertex1, ti.second.Vertex2, ti.second.Vertex3, BLUE);
+        //     }
+        // }
 
-        window.Print(models.List_Triangles(models.Ret_Model(1)).at(0).at(0).first, 500, 500);
+
 
         o = models.Ret_Model(1).meshes[1].vertexCount;
 
