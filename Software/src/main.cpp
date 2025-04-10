@@ -114,14 +114,14 @@ int main(){
         
 
         auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        // if((o == 0.5) && (epoch_seconds != prev_time)){
-        //     // prev_time = epoch_seconds;
-        //     // pathPositions.clear();
-        //     // for(auto it : intersectionList){
-        //     //     pathPositions.push_back(std::pair<Vector3, Vector3>(it.first, (Vector3){0, 0, 0}));
-        //     // }
-        //     // paths.Clear_File();
-        //     // paths.Path_to_Gcode1(pathPositions);
+        if((epoch_seconds != prev_time)){
+            prev_time = epoch_seconds;
+            pathPositions.clear();
+            for(auto it : intersectionList){
+                pathPositions.push_back(std::pair<Vector3, Vector3>(it.first, (Vector3){0, 0, 0}));
+            }
+            paths.Clear_File();
+            paths.Path_to_Gcode1(pathPositions);
 
         //     // window.Clear_File();
         //     // for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
@@ -140,16 +140,16 @@ int main(){
         //     //         );
         //     //     }
         //     // }
-        //     // o = 0;
-        // }
-        // if(epoch_seconds != prev_time){
-        //     prev_time = epoch_seconds;
+            o = 0;
+        }
+        if(epoch_seconds != prev_time){
+            prev_time = epoch_seconds;
             // o++;
 
-        // }
+        }
         
         if(window.Ret_Button(17)){
-            is_pressed = 1;
+            o = 0.5;
         }
 
         if(window.Ret_Button(1)){x = x + 0.5;}
