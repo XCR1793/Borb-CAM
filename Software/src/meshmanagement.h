@@ -63,6 +63,8 @@ class mesh{
 
     std::pair<Vector3, bool> IntersectLinePlane(Vector4 planeNormal, Vector3 lineStart, Vector3 lineEnd);
 
+    std::pair<Triangle, bool> IntersectTrianglePlane(Vector4 planeNormal, Triangle triangle);
+
     /**
      * Add point to point, to line equation
      * Add Line to Plane Intersection 3D Point equation
@@ -81,6 +83,12 @@ class mesh{
     Model Rotate_Model(Model &model, Vector3 rotatiton);
 
     std::vector<std::vector<std::pair<int, Triangle>>> List_Triangles(Model model);
+
+    int Triangle_Touching(Triangle first, Triangle second);
+
+    std::vector<std::pair<int, Triangle>> Sort_Triangles(std::vector<std::pair<int, Triangle>> Unsorted_Triangles);
+
+    std::vector<std::vector<std::pair<int, Triangle>>> Intersecting_Triangles(Model &model, Vector4 Coeff_abcd);
 
     std::vector<std::pair<Vector3, Vector3>> Intersect_Model(Model &model, Vector4 Coeff_abcd);
 

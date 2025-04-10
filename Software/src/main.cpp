@@ -44,6 +44,7 @@ int main(){
     window.Add_Button(14, 20, 60, 120, 400, "C-");
     window.Add_Button(15, 20, 60, 30, 450, "O+");
     window.Add_Button(16, 20, 60, 120, 450, "O-");
+    window.Add_Button(17, 20, 60, 75, 500, "Run");
 
     mesh models;
 
@@ -85,7 +86,11 @@ int main(){
     auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     auto prev_time = epoch_seconds;
 
+    bool is_pressed = 0;
 
+    float slice_size = 0.1f;
+
+    Model ActiveModel = models.Ret_Model(1);
 
     while(!WindowShouldClose()){
 
@@ -102,8 +107,8 @@ int main(){
 
         std::vector<std::pair<Vector3, Vector3>> intersectionList;
 
-        for(float i = -1; i < 1; i += 0.2f) {
-            std::vector<std::pair<Vector3, Vector3>> result = models.Intersect_Model(currentmodel, (Vector4){0, 1, 0, i});
+        for(float i = -2; i < 2; i += slice_size) {
+            std::vector<std::pair<Vector3, Vector3>> result = models.Intersect_Model(ActiveModel, (Vector4){0, 1, 0, i});
             intersectionList.insert(intersectionList.end(), result.begin(), result.end());
         }
         
@@ -142,6 +147,10 @@ int main(){
             // o++;
 
         // }
+        
+        if(window.Ret_Button(17)){
+            is_pressed = 1;
+        }
 
         if(window.Ret_Button(1)){x = x + 0.5;}
         if(window.Ret_Button(2)){x = x - 0.5;}
@@ -157,10 +166,9 @@ int main(){
         if(window.Ret_Button(12)){b = b - PI/2;}
         if(window.Ret_Button(13)){c = c + 0.5;}
         if(window.Ret_Button(14)){c = c - 0.5;}
-        if(window.Ret_Button(15)){o = o + 0.5;}
-        if(window.Ret_Button(16)){o = o - 0.5;}
-
-        window.Run_Buttons();
+        if(window.Ret_Button(15)){slice_size = slice_size + 0.01f;}
+        if(window.Ret_Button(16)){slice_size = slice_size - 0.01f;}
+        if(slice_size <= 0){slice_size = 0.01f;}
 
         models.Rep_Model(1, (Vector3){x, y, z});
 
@@ -169,6 +177,11 @@ int main(){
         models.Rotate_Model(currentmodel, (Vector3){a, b, c});
 
         models.Reu_Model(1, currentmodel);
+
+        if(is_pressed){
+            is_pressed = 0;
+            ActiveModel = currentmodel;
+        }
 
         int seg = 30;
 
@@ -204,6 +217,8 @@ int main(){
         models.Run_Models();
 
         EndMode3D();
+
+        window.Run_Buttons();
 
         DrawFPS(10, 10);
         EndDrawing();

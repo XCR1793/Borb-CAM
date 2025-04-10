@@ -162,7 +162,13 @@ std::pair<Vector3, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Vector3 l
     return { intersection, true };
 }
 
-
+std::pair<Triangle, bool> mesh::IntersectTrianglePlane(Vector4 planeNormal, Triangle triangle){
+    std::pair<Triangle, bool> Intersecting = {triangle, 0};
+    if(IntersectLinePlane(planeNormal, triangle.Vertex1, triangle.Vertex2).second){Intersecting.second = 1;}
+    if(IntersectLinePlane(planeNormal, triangle.Vertex2, triangle.Vertex3).second){Intersecting.second = 1;}
+    if(IntersectLinePlane(planeNormal, triangle.Vertex3, triangle.Vertex1).second){Intersecting.second = 1;}
+    return Intersecting;
+}
 
 /**##########################################
  * #       Mesh Manipulation Functions      #
@@ -211,10 +217,88 @@ std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model mo
     return All_Triangles;
 }
 
+
+int mesh::Triangle_Touching(Triangle first, Triangle second){
+    int i = 0;
+
+    if( (first.Vertex1 == second.Vertex1) || 
+        (first.Vertex1 == second.Vertex2) || 
+        (first.Vertex1 == second.Vertex3)) i++;
+
+    if( (first.Vertex2 == second.Vertex1) || 
+        (first.Vertex2 == second.Vertex2) || 
+        (first.Vertex2 == second.Vertex3)) i++;
+
+    if( (first.Vertex3 == second.Vertex1) || 
+        (first.Vertex3 == second.Vertex2) || 
+        (first.Vertex3 == second.Vertex3)) i++;
+
+    return i;
+}
+
+
+std::vector<std::pair<int, Triangle>> mesh::Sort_Triangles(std::vector<std::pair<int, Triangle>> Unsorted_Triangles) {
+    std::vector<std::pair<int, Triangle>> Sorted;
+
+    if (Unsorted_Triangles.empty()) return Sorted;
+
+    // Start with the first triangle
+    Sorted.push_back(Unsorted_Triangles[0]);
+    Unsorted_Triangles.erase(Unsorted_Triangles.begin());
+
+    while (!Unsorted_Triangles.empty()) {
+        int maxTouching = -1;
+        size_t bestIndex = 0;
+
+        for (size_t i = 0; i < Unsorted_Triangles.size(); ++i) {
+            int touching = Triangle_Touching(Sorted.back().second, Unsorted_Triangles[i].second);
+            if (touching > maxTouching) {
+                maxTouching = touching;
+                bestIndex = i;
+            }
+        }
+
+        // Add the best matching triangle to the sorted list
+        Sorted.push_back(Unsorted_Triangles[bestIndex]);
+        Unsorted_Triangles.erase(Unsorted_Triangles.begin() + bestIndex);
+    }
+
+    return Sorted;
+}
+
+
+std::vector<std::vector<std::pair<int, Triangle>>> mesh::Intersecting_Triangles(Model &model, Vector4 Coeff_abcd){
+    std::vector<std::vector<std::pair<int, Triangle>>> Sorted_Triangle_List;
+    std::vector<std::pair<int, Triangle>> Unsorted_List_Intersecting_Triangles;
+    std::vector<std::pair<int, Triangle>> Sorted_List_Intersecting_Triangles;
+    std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = List_Triangles(model);
+
+    for(auto perMesh : Triangle_List){
+        int i = 0;
+        Unsorted_List_Intersecting_Triangles.clear();
+        Sorted_List_Intersecting_Triangles.clear();
+        for(auto perTriangle : perMesh){
+            std::pair<Triangle, bool> Intersecting_Triangle = IntersectTrianglePlane(Coeff_abcd, perTriangle.second);
+            if(Intersecting_Triangle.second){Unsorted_List_Intersecting_Triangles.push_back(std::make_pair(i, Intersecting_Triangle.first));}
+        }
+
+        Sorted_List_Intersecting_Triangles = Sort_Triangles(Unsorted_List_Intersecting_Triangles);
+
+        // Sorted_Triangle_List.insert(Sorted_Triangle_List.end(), Sorted_List_Intersecting_Triangles.begin(), Sorted_List_Intersecting_Triangles.end());
+        
+        Sorted_Triangle_List.push_back(Sorted_List_Intersecting_Triangles);
+        
+        i++;
+    }
+
+    return Sorted_Triangle_List;
+}
+
 std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
     std::vector<std::pair<Vector3, Vector3>> intersectionList;
 
-    std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = List_Triangles(model);
+    std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
+    // std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = List_Triangles(model);
 
     for(auto perMesh : Triangle_List){
         for(auto perTriangle : perMesh){
