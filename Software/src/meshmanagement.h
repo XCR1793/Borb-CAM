@@ -28,7 +28,7 @@ struct Line{
     Vector3 endLineRot;
     int type; // 1 = Surface, 2 = Movement
     int meshNo;
-    int ringNo;
+    int islandNo;
 };
 
 class mesh{
@@ -98,7 +98,8 @@ class mesh{
 
     std::vector<std::pair<int, Triangle>> Sort_Triangles(std::vector<std::pair<int, Triangle>> Unsorted_Triangles);
 
-    std::vector<std::vector<std::pair<int, Triangle>>> Intersecting_Triangles(Model &model, Vector4 Coeff_abcd);
+    // Meshes, Islands, Triangle List(Triangle Number, Triangle)
+    std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Intersecting_Triangles(Model &model, Vector4 Coeff_abcd);
 
     // Pair 1(Line Type [1 = Surface, 2 = Movement]), Pair 2(Start line, End line)
     std::vector<Line> Intersect_Model(Model &model, Vector4 Coeff_abcd);

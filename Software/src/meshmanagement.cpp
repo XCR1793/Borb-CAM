@@ -267,7 +267,8 @@ std::vector<std::pair<int, Triangle>> mesh::Sort_Triangles(std::vector<std::pair
 }
 
 
-std::vector<std::vector<std::pair<int, Triangle>>> mesh::Intersecting_Triangles(Model &model, Vector4 Coeff_abcd){
+std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> mesh::Intersecting_Triangles(Model &model, Vector4 Coeff_abcd){
+    std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Sorted_Triangles_Islands_Accounted;
     std::vector<std::vector<std::pair<int, Triangle>>> Sorted_Triangle_List;
     std::vector<std::pair<int, Triangle>> Unsorted_List_Intersecting_Triangles;
     std::vector<std::pair<int, Triangle>> Sorted_List_Intersecting_Triangles;
@@ -284,34 +285,63 @@ std::vector<std::vector<std::pair<int, Triangle>>> mesh::Intersecting_Triangles(
 
         Sorted_List_Intersecting_Triangles = Sort_Triangles(Unsorted_List_Intersecting_Triangles);
 
-        // Sorted_Triangle_List.insert(Sorted_Triangle_List.end(), Sorted_List_Intersecting_Triangles.begin(), Sorted_List_Intersecting_Triangles.end());
-        
         Sorted_Triangle_List.push_back(Sorted_List_Intersecting_Triangles);
         
         i++;
     }
 
-    return Sorted_Triangle_List;
+    std::vector<std::vector<std::pair<int, Triangle>>> Islands;
+    std::vector<std::pair<int, Triangle>> Island;
+
+    for(auto& perMesh : Sorted_Triangle_List){
+        if(perMesh.empty()) continue;
+    
+        Island.push_back(perMesh.at(0));
+        for(size_t i = 1; i < perMesh.size(); i++){
+            if(Triangle_Touching(perMesh.at(i).second, perMesh.at(i-1).second)){
+                Island.push_back(perMesh.at(i));
+            }else{
+                Islands.push_back(Island);
+                Island.clear();
+                Island.push_back(perMesh.at(i));
+            }
+        }
+
+        Islands.push_back(Island);
+        Island.clear();
+    
+        Sorted_Triangles_Islands_Accounted.push_back(Islands);
+        Islands.clear();
+    }
+    
+
+    return Sorted_Triangles_Islands_Accounted;
 }
 
+
+
 std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
-    std::vector<std::pair<std::pair<Vector3, Vector3>, int>> intersectionList;
+    std::vector<std::pair<std::pair<std::pair<Vector3, Vector3>, int>, int>> intersectionList;
     std::vector<Line> Lines;
 
-    std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
+    std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
     // std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = List_Triangles(model);
 
     int meshNo = 0;
+    int island = 0;
 
     for(auto perMesh : Triangle_List){
-        for(auto perTriangle : perMesh){
-            std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex1, perTriangle.second.Vertex3);
-            std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex2, perTriangle.second.Vertex1);
-            std::pair<Vector3, bool> Intersection3 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex3, perTriangle.second.Vertex2);
-        
-            if(Intersection1.second){intersectionList.push_back(std::make_pair(std::make_pair(Intersection1.first, (Vector3){}), meshNo));}
-            if(Intersection2.second){intersectionList.push_back(std::make_pair(std::make_pair(Intersection2.first, (Vector3){}), meshNo));}
-            if(Intersection3.second){intersectionList.push_back(std::make_pair(std::make_pair(Intersection3.first, (Vector3){}), meshNo));}
+        for(auto perIsland : perMesh){
+            for(auto perTriangle : perIsland){
+                std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex1, perTriangle.second.Vertex3);
+                std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex2, perTriangle.second.Vertex1);
+                std::pair<Vector3, bool> Intersection3 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex3, perTriangle.second.Vertex2);
+            
+                if(Intersection1.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection1.first, (Vector3){}), island), meshNo));}
+                if(Intersection2.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection2.first, (Vector3){}), island), meshNo));}
+                if(Intersection3.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection3.first, (Vector3){}), island), meshNo));}
+            }
+            island++;
         }
         meshNo++;
     }
@@ -323,12 +353,13 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
     for(size_t i = 0; i < intersectionList.size() - 1; i++){
         if(intersectionList.at(i).second == intersectionList.at(i+1).second){
             Lines.push_back((Line){
-                .startLinePos = intersectionList.at(i).first.first, 
-                .startLineRot = intersectionList.at(i).first.second, 
-                .endLinePos = intersectionList.at(i+1).first.first, 
-                .endLineRot = intersectionList.at(i+1).first.second, 
+                .startLinePos = intersectionList.at(i).first.first.first, 
+                .startLineRot = intersectionList.at(i).first.first.second, 
+                .endLinePos = intersectionList.at(i+1).first.first.first, 
+                .endLineRot = intersectionList.at(i+1).first.first.second, 
                 .type = 1,
-                .meshNo = intersectionList.at(i).second
+                .meshNo = intersectionList.at(i).second,
+                .islandNo = intersectionList.at(i).first.second
             });
         }
     }
