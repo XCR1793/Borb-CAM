@@ -218,21 +218,71 @@ int main(){
         o = models.Ret_Model(1).meshes[1].vertexCount;
 
 
-        if(!intersectionList.empty()){
-            for(auto line : intersectionList){
-                if(line.type == 1){
-                    if(line.meshNo == 0){
-                        if(line.islandNo == 0){DrawLine3D(line.startLinePos, line.endLinePos, BLUE);}
-                        if(line.islandNo == 1){DrawLine3D(line.startLinePos, line.endLinePos, RED);}
-                    }
-                    if(line.meshNo == 1){
-                        if(line.islandNo == 0){DrawLine3D(line.startLinePos, line.endLinePos, PURPLE);}
-                        if(line.islandNo == 1){DrawLine3D(line.startLinePos, line.endLinePos, GREEN);}
-                    }
+        // if(!intersectionList.empty()){
+        //     for(auto line : intersectionList){
+        //         if(line.type == 1){
+        //             if(line.meshNo == 0){
+        //                 if(line.islandNo == 0){DrawLine3D(line.startLinePos, line.endLinePos, BLUE);}
+        //                 if(line.islandNo == 1){DrawLine3D(line.startLinePos, line.endLinePos, RED);}
+        //             }
+        //             if(line.meshNo == 1){
+        //                 if(line.islandNo == 0){DrawLine3D(line.startLinePos, line.endLinePos, PURPLE);}
+        //                 if(line.islandNo == 1){DrawLine3D(line.startLinePos, line.endLinePos, GREEN);}
+        //             }
+        //         }
+        //         // if(line.type == 2){DrawLine3D(line.startLinePos, line.endLinePos, ORANGE);}
+        //     }
+        // }
+
+        if (!intersectionList.empty()) {
+            // Simple function to generate a unique color based on mesh and island number
+            auto GenerateColor = [](int meshNo, int islandNo) -> Color {
+                int seed = meshNo * 73856093 ^ islandNo * 19349663; // Combine numbers uniquely
+                return (Color){
+                    (unsigned char)(50 + (seed * 97) % 200),
+                    (unsigned char)(50 + (seed * 53) % 200),
+                    (unsigned char)(50 + (seed * 29) % 200),
+                    255
+                };
+            };
+        
+            for (auto& line : intersectionList) {
+                if (line.type == 1) {
+                    Color color = GenerateColor(line.meshNo, line.islandNo);
+                    DrawLine3D(line.startLinePos, line.endLinePos, color);
                 }
-                // if(line.type == 2){DrawLine3D(line.startLinePos, line.endLinePos, ORANGE);}
+        
+                // Optional: type 2 lines if needed
+                // if (line.type == 2) {
+                //     DrawLine3D(line.startLinePos, line.endLinePos, ORANGE);
+                // }
             }
         }
+        
+// // Helper lambda to generate a pseudo-random color based on index
+// auto GenerateUniqueColor = [](int index) -> Color {
+//     // Simple color cycling using modulus to stay within 0-255
+//     return (Color){
+//         (unsigned char)(50 + (index * 97) % 200),  // R
+//         (unsigned char)(50 + (index * 53) % 200),  // G
+//         (unsigned char)(50 + (index * 29) % 200),  // B
+//         255                                       // A
+//     };
+// };
+
+// int islandCounter = 0;
+
+// for (auto& perMesh : Triangle_List) {
+//     for (auto& perIsland : perMesh) {
+//         Color islandColor = GenerateUniqueColor(islandCounter++);
+
+//         for (auto& perTriangle : perIsland) {
+//             DrawLine3D(perTriangle.second.Vertex1, perTriangle.second.Vertex2, islandColor);
+//             DrawLine3D(perTriangle.second.Vertex2, perTriangle.second.Vertex3, islandColor);
+//             DrawLine3D(perTriangle.second.Vertex3, perTriangle.second.Vertex1, islandColor);
+//         }
+//     }
+// }
 
         models.Run_Models();
 

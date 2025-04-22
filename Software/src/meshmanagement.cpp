@@ -325,7 +325,6 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
     std::vector<Line> Lines;
 
     std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
-    // std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = List_Triangles(model);
 
     int meshNo = 0;
     int island = 0;
@@ -349,21 +348,25 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
     if(intersectionList.size() < 2){
         return Lines;
     }
-
-    for(size_t i = 0; i < intersectionList.size() - 1; i++){
-        if(intersectionList.at(i).second == intersectionList.at(i+1).second){
+    
+    for (size_t i = 0; i < intersectionList.size() - 1; i++) {
+        auto& current = intersectionList[i];
+        auto& next = intersectionList[i + 1];
+    
+        if (current.second == next.second &&
+            current.first.second == next.first.second) {
+    
             Lines.push_back((Line){
-                .startLinePos = intersectionList.at(i).first.first.first, 
-                .startLineRot = intersectionList.at(i).first.first.second, 
-                .endLinePos = intersectionList.at(i+1).first.first.first, 
-                .endLineRot = intersectionList.at(i+1).first.first.second, 
+                .startLinePos = current.first.first.first,
+                .startLineRot = current.first.first.second,
+                .endLinePos = next.first.first.first,
+                .endLineRot = next.first.first.second,
                 .type = 1,
-                .meshNo = intersectionList.at(i).second,
-                .islandNo = intersectionList.at(i).first.second
+                .meshNo = current.second,
+                .islandNo = current.first.second
             });
         }
     }
-    
 
     return Lines;
 }
