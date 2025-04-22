@@ -220,7 +220,10 @@ int main(){
 
         if(!intersectionList.empty()){
             for(auto line : intersectionList){
-                if(line.type == 1){DrawLine3D(line.startLinePos, line.endLinePos, BLUE);}
+                if(line.type == 1){
+                    if(line.meshNo == 0){DrawLine3D(line.startLinePos, line.endLinePos, BLUE);}
+                    if(line.meshNo == 1){DrawLine3D(line.startLinePos, line.endLinePos, RED);}
+                }
                 if(line.type == 2){DrawLine3D(line.startLinePos, line.endLinePos, ORANGE);}
             }
         }

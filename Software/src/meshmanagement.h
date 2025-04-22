@@ -27,6 +27,8 @@ struct Line{
     Vector3 endLinePos;
     Vector3 endLineRot;
     int type; // 1 = Surface, 2 = Movement
+    int meshNo;
+    int ringNo;
 };
 
 class mesh{
