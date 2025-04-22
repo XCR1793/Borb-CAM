@@ -105,48 +105,48 @@ int main(){
 
         Model currentmodel = models.Ret_Model(1);
 
-        std::vector<std::pair<Vector3, Vector3>> intersectionList;
+        std::vector<Line> intersectionList;
 
         for(float i = -2; i < 2; i += slice_size) {
-            std::vector<std::pair<Vector3, Vector3>> result = models.Intersect_Model(ActiveModel, (Vector4){0, 1, 0, i});
+            std::vector<Line> result = models.Intersect_Model(ActiveModel, (Vector4){0, 1, 0, i});
             intersectionList.insert(intersectionList.end(), result.begin(), result.end());
         }
         
 
-        auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        if((epoch_seconds != prev_time)){
-            prev_time = epoch_seconds;
-            pathPositions.clear();
-            for(auto it : intersectionList){
-                pathPositions.push_back(std::pair<Vector3, Vector3>(it.first, (Vector3){0, 0, 0}));
-            }
-            paths.Clear_File();
-            paths.Path_to_Gcode1(pathPositions);
+        // auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        // if((epoch_seconds != prev_time)){
+        //     prev_time = epoch_seconds;
+        //     pathPositions.clear();
+        //     for(auto it : intersectionList){
+        //         pathPositions.push_back(std::pair<Vector3, Vector3>(it.first, (Vector3){0, 0, 0}));
+        //     }
+        //     paths.Clear_File();
+        //     paths.Path_to_Gcode1(pathPositions);
 
-        //     // window.Clear_File();
-        //     // for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
-        //     //     auto vertexCount = models.Ret_Model(1).meshes[i].vertexCount;
-        //     //     auto triangleCount = models.Ret_Model(1).meshes[i].triangleCount;
-        //     //     window.Write_File_Last("src/Debug", "txt", "Mesh Number: " + std::to_string(i));
-        //     //     window.Write_File_Last("src/Debug", "txt", "Vertex Count: " + std::to_string(vertexCount));
-        //     //     window.Write_File_Last("src/Debug", "txt", "Triangle Count: " + std::to_string(triangleCount));
+        // //     // window.Clear_File();
+        // //     // for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
+        // //     //     auto vertexCount = models.Ret_Model(1).meshes[i].vertexCount;
+        // //     //     auto triangleCount = models.Ret_Model(1).meshes[i].triangleCount;
+        // //     //     window.Write_File_Last("src/Debug", "txt", "Mesh Number: " + std::to_string(i));
+        // //     //     window.Write_File_Last("src/Debug", "txt", "Vertex Count: " + std::to_string(vertexCount));
+        // //     //     window.Write_File_Last("src/Debug", "txt", "Triangle Count: " + std::to_string(triangleCount));
 
-        //     //     for(int j = 0; j < 2418; j++){
-        //     //         window.Write_File_Last("src/Debug", "txt",
-        //     //             " V" + std::to_string(j) + ": " + 
-        //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 0]) + " " +
-        //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 1]) + " " +
-        //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 2]) + " "
-        //     //         );
-        //     //     }
-        //     // }
-            o = 0;
-        }
-        if(epoch_seconds != prev_time){
-            prev_time = epoch_seconds;
-            // o++;
+        // //     //     for(int j = 0; j < 2418; j++){
+        // //     //         window.Write_File_Last("src/Debug", "txt",
+        // //     //             " V" + std::to_string(j) + ": " + 
+        // //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 0]) + " " +
+        // //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 1]) + " " +
+        // //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 2]) + " "
+        // //     //         );
+        // //     //     }
+        // //     // }
+        //     o = 0;
+        // }
+        // if(epoch_seconds != prev_time){
+        //     prev_time = epoch_seconds;
+        //     // o++;
 
-        }
+        // }
         
         if(window.Ret_Button(17)){
             o = 0.5;
@@ -210,7 +210,7 @@ int main(){
 
         if(!intersectionList.empty()){
             for(std::size_t i = 0; i < intersectionList.size()-1; i++){
-                DrawLine3D(intersectionList.at(i).first, intersectionList.at(i+1).first, BLUE);
+                DrawLine3D(intersectionList.at(i).startLinePos, intersectionList.at(i+1).startLinePos, BLUE);
             }
         }
 

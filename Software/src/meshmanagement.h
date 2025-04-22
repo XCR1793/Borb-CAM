@@ -21,6 +21,14 @@ struct Triangle{
     Vector3 Vertex3;
 };
 
+struct Line{
+    Vector3 startLinePos;
+    Vector3 startLineRot;
+    Vector3 endLinePos;
+    Vector3 endLineRot;
+    int type; // 1 = Surface, 2 = Movement
+};
+
 class mesh{
     public:
     
@@ -90,7 +98,8 @@ class mesh{
 
     std::vector<std::vector<std::pair<int, Triangle>>> Intersecting_Triangles(Model &model, Vector4 Coeff_abcd);
 
-    std::vector<std::pair<Vector3, Vector3>> Intersect_Model(Model &model, Vector4 Coeff_abcd);
+    // Pair 1(Line Type [1 = Surface, 2 = Movement]), Pair 2(Start line, End line)
+    std::vector<Line> Intersect_Model(Model &model, Vector4 Coeff_abcd);
 
     
 

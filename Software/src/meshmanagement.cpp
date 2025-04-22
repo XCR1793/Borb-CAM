@@ -294,8 +294,8 @@ std::vector<std::vector<std::pair<int, Triangle>>> mesh::Intersecting_Triangles(
     return Sorted_Triangle_List;
 }
 
-std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
-    std::vector<std::pair<Vector3, Vector3>> intersectionList;
+std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
+    std::vector<Line> intersectionList;
 
     std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
     // std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = List_Triangles(model);
@@ -306,9 +306,13 @@ std::vector<std::pair<Vector3, Vector3>> mesh::Intersect_Model(Model &model, Vec
             std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex2, perTriangle.second.Vertex1);
             std::pair<Vector3, bool> Intersection3 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex3, perTriangle.second.Vertex2);
         
-            if(Intersection1.second){intersectionList.push_back(std::make_pair(Intersection1.first, (Vector3){}));}
-            if(Intersection2.second){intersectionList.push_back(std::make_pair(Intersection2.first, (Vector3){}));}
-            if(Intersection3.second){intersectionList.push_back(std::make_pair(Intersection3.first, (Vector3){}));}
+            if(Intersection1.second){intersectionList.push_back((Line){.startLinePos=Intersection1.first});}
+            if(Intersection2.second){intersectionList.push_back((Line){.startLinePos=Intersection2.first});}
+            if(Intersection3.second){intersectionList.push_back((Line){.startLinePos=Intersection3.first});}
+
+            // intersectionList.push_back(std::make_pair(Intersection1.first, (Vector3){}));
+            // intersectionList.push_back(std::make_pair(Intersection2.first, (Vector3){}));
+            // intersectionList.push_back(std::make_pair(Intersection3.first, (Vector3){}));
         }
     }
 
