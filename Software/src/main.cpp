@@ -109,6 +109,16 @@ int main(){
 
         for(float i = -2; i < 2; i += slice_size) {
             std::vector<Line> result = models.Intersect_Model(ActiveModel, (Vector4){0, 1, 0, i});
+            if(!result.empty() && !intersectionList.empty()){
+                auto lastIntersection = intersectionList.back();
+                intersectionList.push_back((Line){
+                    .startLinePos = lastIntersection.endLinePos,
+                    .startLineRot = lastIntersection.endLineRot,
+                    .endLinePos = result.front().startLinePos,
+                    .endLineRot = result.front().startLineRot,
+                    .type = 2
+                });
+            }
             intersectionList.insert(intersectionList.end(), result.begin(), result.end());
         }
         
@@ -209,8 +219,9 @@ int main(){
 
 
         if(!intersectionList.empty()){
-            for(std::size_t i = 0; i < intersectionList.size()-1; i++){
-                DrawLine3D(intersectionList.at(i).startLinePos, intersectionList.at(i+1).startLinePos, BLUE);
+            for(auto line : intersectionList){
+                if(line.type == 1){DrawLine3D(line.startLinePos, line.endLinePos, BLUE);}
+                if(line.type == 2){DrawLine3D(line.startLinePos, line.endLinePos, ORANGE);}
             }
         }
 

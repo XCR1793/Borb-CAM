@@ -295,10 +295,13 @@ std::vector<std::vector<std::pair<int, Triangle>>> mesh::Intersecting_Triangles(
 }
 
 std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
-    std::vector<Line> intersectionList;
+    std::vector<std::pair<Vector3, Vector3>> intersectionList;
+    std::vector<Line> Lines;
 
     std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
     // std::vector<std::vector<std::pair<int, Triangle>>> Triangle_List = List_Triangles(model);
+
+    int meshNo = 0;
 
     for(auto perMesh : Triangle_List){
         for(auto perTriangle : perMesh){
@@ -306,17 +309,28 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
             std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex2, perTriangle.second.Vertex1);
             std::pair<Vector3, bool> Intersection3 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex3, perTriangle.second.Vertex2);
         
-            if(Intersection1.second){intersectionList.push_back((Line){.startLinePos=Intersection1.first});}
-            if(Intersection2.second){intersectionList.push_back((Line){.startLinePos=Intersection2.first});}
-            if(Intersection3.second){intersectionList.push_back((Line){.startLinePos=Intersection3.first});}
-
-            // intersectionList.push_back(std::make_pair(Intersection1.first, (Vector3){}));
-            // intersectionList.push_back(std::make_pair(Intersection2.first, (Vector3){}));
-            // intersectionList.push_back(std::make_pair(Intersection3.first, (Vector3){}));
+            if(Intersection1.second){intersectionList.push_back(std::make_pair(Intersection1.first, (Vector3){}));}
+            if(Intersection2.second){intersectionList.push_back(std::make_pair(Intersection2.first, (Vector3){}));}
+            if(Intersection3.second){intersectionList.push_back(std::make_pair(Intersection3.first, (Vector3){}));}
         }
     }
 
-    return intersectionList;
+    if(intersectionList.size() < 2){
+        return Lines;
+    }
+
+    for(size_t i = 0; i < intersectionList.size() - 1; i++){
+        Lines.push_back((Line){
+            .startLinePos=intersectionList.at(i).first, 
+            .startLineRot=intersectionList.at(i).second, 
+            .endLinePos=intersectionList.at(i+1).first, 
+            .endLineRot=intersectionList.at(i+1).second, 
+            .type = 1
+        });
+    }
+    
+
+    return Lines;
 }
 
 
