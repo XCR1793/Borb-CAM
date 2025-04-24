@@ -51,7 +51,7 @@ int main(){
     // Mesh cubeMesh = GenMeshCube(2.0f, 2.0f, 2.0f); // width, height, length
     // Model cubeModel = LoadModelFromMesh(cubeMesh);
 
-    models.Add_Model(1, "src/model.obj");
+    models.Add_Model(1, "src/monkey.obj");
     models.Add_Model(2, "src/model.obj");
     models.Add_Model(3, "src/model.obj");
 
@@ -107,7 +107,7 @@ int main(){
 
         std::vector<Line> intersectionList;
 
-        for(float i = -2.5; i < 2.5; i += slice_size) {
+        for(float i = -4; i <= 4; i += slice_size) {
             std::vector<Line> result = models.Intersect_Model(ActiveModel, (Vector4){0, 1, 0, i});
             if(!result.empty() && !intersectionList.empty()){
                 auto lastIntersection = intersectionList.back();
@@ -259,6 +259,7 @@ int main(){
             }
         }
         
+        
         // const int NUM_ISLANDS = 2;
         // const int NUM_GRADIENT_LINES = 5;
         
@@ -304,7 +305,7 @@ int main(){
         
         
 
-// std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = models.Intersecting_Triangles(currentmodel, (Vector4){0,1,0,-0.5});
+// std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = models.Intersecting_Triangles(currentmodel, (Vector4){0,1,0,2});
 
 // // Helper lambda to generate a pseudo-random color based on index
 // auto GenerateUniqueColor = [](int index) -> Color {
