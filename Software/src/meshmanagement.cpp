@@ -320,50 +320,149 @@ std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> mesh::Intersecti
 
 
 
+// std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
+//     std::vector<std::pair<std::pair<std::pair<Vector3, Vector3>, int>, int>> intersectionList;
+//     std::vector<Line> Lines;
+
+//     std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
+
+//     int meshNo = 0;
+//     int island = 0;
+
+//     for(auto perMesh : Triangle_List){
+//         for(auto perIsland : perMesh){
+//             for(auto perTriangle : perIsland){
+//                 std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex1, perTriangle.second.Vertex3);
+//                 std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex2, perTriangle.second.Vertex1);
+//                 std::pair<Vector3, bool> Intersection3 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex3, perTriangle.second.Vertex2);
+            
+//                 if(Intersection1.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection1.first, (Vector3){}), island), meshNo));}
+//                 if(Intersection2.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection2.first, (Vector3){}), island), meshNo));}
+//                 if(Intersection3.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection3.first, (Vector3){}), island), meshNo));}
+//             }
+//             island++;
+//         }
+//         meshNo++;
+//     }
+
+//     if(intersectionList.size() < 2){
+//         return Lines;
+//     }
+    
+//     for (size_t i = 0; i < intersectionList.size() - 1; i++) {
+//         auto& current = intersectionList[i];
+//         auto& next = intersectionList[i + 1];
+    
+//         if (current.second == next.second &&
+//             current.first.second == next.first.second) {
+    
+//             Lines.push_back((Line){
+//                 .startLinePos = current.first.first.first,
+//                 .startLineRot = current.first.first.second,
+//                 .endLinePos = next.first.first.first,
+//                 .endLineRot = next.first.first.second,
+//                 .type = 1,
+//                 .meshNo = current.second,
+//                 .islandNo = current.first.second
+//             });
+//         }
+//     }
+
+//     return Lines;
+// }
+
 std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
-    std::vector<std::pair<std::pair<std::pair<Vector3, Vector3>, int>, int>> intersectionList;
     std::vector<Line> Lines;
 
+    // Intersecting triangles grouped as: mesh → island → triangles
     std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
 
-    int meshNo = 0;
-    int island = 0;
+    // Match structure for storing intersection points: mesh → island → points
+    std::vector<std::vector<std::vector<Vector3>>> islandPoints(
+        Triangle_List.size(), 
+        std::vector<std::vector<Vector3>>()
+    );
 
-    for(auto perMesh : Triangle_List){
-        for(auto perIsland : perMesh){
-            for(auto perTriangle : perIsland){
-                std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex1, perTriangle.second.Vertex3);
-                std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex2, perTriangle.second.Vertex1);
-                std::pair<Vector3, bool> Intersection3 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex3, perTriangle.second.Vertex2);
-            
-                if(Intersection1.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection1.first, (Vector3){}), island), meshNo));}
-                if(Intersection2.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection2.first, (Vector3){}), island), meshNo));}
-                if(Intersection3.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection3.first, (Vector3){}), island), meshNo));}
+    // Fill the vector with proper intersection points
+    for(size_t meshNo = 0; meshNo < Triangle_List.size(); ++meshNo){
+        auto& mesh = Triangle_List[meshNo];
+        islandPoints[meshNo].resize(mesh.size());
+
+        for(size_t islandNo = 0; islandNo < mesh.size(); ++islandNo){
+            auto& island = mesh[islandNo];
+
+            for(auto& [_, tri] : island){
+                auto i1 = IntersectLinePlane(Coeff_abcd, tri.Vertex1, tri.Vertex3);
+                auto i2 = IntersectLinePlane(Coeff_abcd, tri.Vertex2, tri.Vertex1);
+                auto i3 = IntersectLinePlane(Coeff_abcd, tri.Vertex3, tri.Vertex2);
+
+                if(i1.second)islandPoints[meshNo][islandNo].push_back(i1.first);
+                if(i2.second)islandPoints[meshNo][islandNo].push_back(i2.first);
+                if(i3.second)islandPoints[meshNo][islandNo].push_back(i3.first);
             }
-            island++;
         }
-        meshNo++;
     }
 
-    if(intersectionList.size() < 2){
-        return Lines;
-    }
-    
-    for (size_t i = 0; i < intersectionList.size() - 1; i++) {
-        auto& current = intersectionList[i];
-        auto& next = intersectionList[i + 1];
-    
-        if (current.second == next.second &&
-            current.first.second == next.first.second) {
-    
-            Lines.push_back((Line){
-                .startLinePos = current.first.first.first,
-                .startLineRot = current.first.first.second,
-                .endLinePos = next.first.first.first,
-                .endLineRot = next.first.first.second,
+    // Process each island
+    for(size_t meshNo = 0; meshNo < islandPoints.size(); ++meshNo){
+        for(size_t islandNo = 0; islandNo < islandPoints[meshNo].size(); ++islandNo){
+            auto& points = islandPoints[meshNo][islandNo];
+
+            if (points.size() < 2) continue;
+
+            // Compute centroid
+            Vector3 center = {0, 0, 0};
+            for(const auto& pt : points){
+                center.x += pt.x;
+                center.y += pt.y;
+                center.z += pt.z;
+            }
+            center.x /= points.size();
+            center.y /= points.size();
+            center.z /= points.size();
+
+            // Manual angle-based sort (XZ plane) - selection sort
+            for(size_t i = 0; i < points.size(); ++i){
+                size_t minIndex = i;
+                float minAngle = atan2(points[i].z - center.z, points[i].x - center.x);
+
+                for(size_t j = i + 1; j < points.size(); ++j){
+                    float angle = atan2(points[j].z - center.z, points[j].x - center.x);
+                    if(angle < minAngle){
+                        minAngle = angle;
+                        minIndex = j;
+                    }
+                }
+
+                if(minIndex != i){
+                    Vector3 temp = points[i];
+                    points[i] = points[minIndex];
+                    points[minIndex] = temp;
+                }
+            }
+
+            // Create lines between sorted points
+            for(size_t i = 0; i < points.size() - 1; ++i){
+                Lines.push_back(Line{
+                    .startLinePos = points[i],
+                    .startLineRot = {0},
+                    .endLinePos = points[i + 1],
+                    .endLineRot = {0},
+                    .type = 1,
+                    .meshNo = (int)meshNo,
+                    .islandNo = (int)islandNo
+                });
+            }
+
+            // Optional: close the ring
+            Lines.push_back(Line{
+                .startLinePos = points.back(),
+                .startLineRot = {0},
+                .endLinePos = points.front(),
+                .endLineRot = {0},
                 .type = 1,
-                .meshNo = current.second,
-                .islandNo = current.first.second
+                .meshNo = (int)meshNo,
+                .islandNo = (int)islandNo
             });
         }
     }

@@ -107,7 +107,7 @@ int main(){
 
         std::vector<Line> intersectionList;
 
-        for(float i = -2; i < 2; i += slice_size) {
+        for(float i = -2.5; i < 2.5; i += slice_size) {
             std::vector<Line> result = models.Intersect_Model(ActiveModel, (Vector4){0, 1, 0, i});
             if(!result.empty() && !intersectionList.empty()){
                 auto lastIntersection = intersectionList.back();
@@ -259,6 +259,53 @@ int main(){
             }
         }
         
+        // const int NUM_ISLANDS = 2;
+        // const int NUM_GRADIENT_LINES = 5;
+        
+        // std::vector<std::vector<Line>> islandLines(NUM_ISLANDS);
+        
+        // // Group lines by islandNo only
+        // for (auto& line : intersectionList) {
+        //     if (line.type == 1 && line.islandNo < NUM_ISLANDS) {
+        //         islandLines[line.islandNo].push_back(line);
+        //     }
+        // }
+        
+        // // Draw per island
+        // for (int island = 0; island < NUM_ISLANDS; ++island) {
+        //     auto& lines = islandLines[island];
+        //     int count = lines.size();
+        
+        //     for (int i = 0; i < count; ++i) {
+        //         auto& line = lines[i];
+        //         Color color;
+        
+        //         // Apply stepped gradient only to last NUM_GRADIENT_LINES lines
+        //         int gradientStart = std::max(0, count - NUM_GRADIENT_LINES);
+        
+        //         if (i >= gradientStart) {
+        //             int stepIndex = i - gradientStart;
+        //             float t = (float)stepIndex / (NUM_GRADIENT_LINES - 1);
+        
+        //             // Red to Blue
+        //             color = {
+        //                 (unsigned char)(255 * (1.0f - t)),
+        //                 0,
+        //                 (unsigned char)(255 * t),
+        //                 255
+        //             };
+        //         } else {
+        //             color = WHITE; // Or any fallback/default color
+        //         }
+        
+        //         DrawLine3D(line.startLinePos, line.endLinePos, color);
+        //     }
+        // }
+        
+        
+
+// std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = models.Intersecting_Triangles(currentmodel, (Vector4){0,1,0,-0.5});
+
 // // Helper lambda to generate a pseudo-random color based on index
 // auto GenerateUniqueColor = [](int index) -> Color {
 //     // Simple color cycling using modulus to stay within 0-255
@@ -283,6 +330,50 @@ int main(){
 //         }
 //     }
 // }
+
+
+// std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = models.Intersecting_Triangles(currentmodel, (Vector4){0,1,0,-0.5});
+
+// const int NUM_GRADIENT_TRIANGLES = 5;
+
+// int islandCounter = 0;
+
+// for (auto& perMesh : Triangle_List) {
+//     for (auto& perIsland : perMesh) {
+//         int count = perIsland.size();
+//         int gradientStart = std::max(0, count - NUM_GRADIENT_TRIANGLES);
+
+//         for (int i = 0; i < count; ++i) {
+//             auto& triangle = perIsland[i].second;
+
+//             Color color;
+
+//             if (i >= gradientStart) {
+//                 // Compute step index in gradient
+//                 int stepIndex = i - gradientStart;
+//                 float t = (float)stepIndex / (NUM_GRADIENT_TRIANGLES - 1);
+
+//                 color = {
+//                     (unsigned char)(255 * (1.0f - t)), // red fades
+//                     0,
+//                     (unsigned char)(255 * t),         // blue increases
+//                     255
+//                 };
+//             } else {
+//                 // Use unique color for non-gradient triangles
+//                 color = GenerateUniqueColor(islandCounter);
+//             }
+
+//             DrawLine3D(triangle.Vertex1, triangle.Vertex2, color);
+//             DrawLine3D(triangle.Vertex2, triangle.Vertex3, color);
+//             DrawLine3D(triangle.Vertex3, triangle.Vertex1, color);
+//         }
+
+//         islandCounter++;
+//     }
+// }
+
+
 
         models.Run_Models();
 
