@@ -192,7 +192,6 @@ Model mesh::Rotate_Model(Model &model, Vector3 rotatiton){
     return model;
 }
 
-
 std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model model){
     std::vector<std::vector<std::pair<int, Triangle>>> All_Triangles;
 

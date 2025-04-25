@@ -104,8 +104,6 @@ class mesh{
     // Pair 1(Line Type [1 = Surface, 2 = Movement]), Pair 2(Start line, End line)
     std::vector<Line> Intersect_Model(Model &model, Vector4 Coeff_abcd);
 
-    
-
     private:
 
     /**##########################################

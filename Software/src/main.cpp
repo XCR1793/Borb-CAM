@@ -51,7 +51,7 @@ int main(){
     // Mesh cubeMesh = GenMeshCube(2.0f, 2.0f, 2.0f); // width, height, length
     // Model cubeModel = LoadModelFromMesh(cubeMesh);
 
-    models.Add_Model(1, "src/monkey.obj");
+    models.Add_Model(1, "src/model.obj");
     models.Add_Model(2, "src/model.obj");
     models.Add_Model(3, "src/model.obj");
 
@@ -123,40 +123,40 @@ int main(){
         }
         
 
-        // auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        // if((epoch_seconds != prev_time)){
-        //     prev_time = epoch_seconds;
-        //     pathPositions.clear();
-        //     for(auto it : intersectionList){
-        //         pathPositions.push_back(std::pair<Vector3, Vector3>(it.first, (Vector3){0, 0, 0}));
-        //     }
-        //     paths.Clear_File();
-        //     paths.Path_to_Gcode1(pathPositions);
+        auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        if((epoch_seconds != prev_time)){
+            prev_time = epoch_seconds;
+            pathPositions.clear();
+            for(auto it : intersectionList){
+                pathPositions.push_back(std::pair<Vector3, Vector3>(it.startLinePos, (Vector3){0, 0, 0}));
+            }
+            paths.Clear_File();
+            paths.Path_to_Gcode1(pathPositions);
 
-        // //     // window.Clear_File();
-        // //     // for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
-        // //     //     auto vertexCount = models.Ret_Model(1).meshes[i].vertexCount;
-        // //     //     auto triangleCount = models.Ret_Model(1).meshes[i].triangleCount;
-        // //     //     window.Write_File_Last("src/Debug", "txt", "Mesh Number: " + std::to_string(i));
-        // //     //     window.Write_File_Last("src/Debug", "txt", "Vertex Count: " + std::to_string(vertexCount));
-        // //     //     window.Write_File_Last("src/Debug", "txt", "Triangle Count: " + std::to_string(triangleCount));
+        //     // window.Clear_File();
+        //     // for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
+        //     //     auto vertexCount = models.Ret_Model(1).meshes[i].vertexCount;
+        //     //     auto triangleCount = models.Ret_Model(1).meshes[i].triangleCount;
+        //     //     window.Write_File_Last("src/Debug", "txt", "Mesh Number: " + std::to_string(i));
+        //     //     window.Write_File_Last("src/Debug", "txt", "Vertex Count: " + std::to_string(vertexCount));
+        //     //     window.Write_File_Last("src/Debug", "txt", "Triangle Count: " + std::to_string(triangleCount));
 
-        // //     //     for(int j = 0; j < 2418; j++){
-        // //     //         window.Write_File_Last("src/Debug", "txt",
-        // //     //             " V" + std::to_string(j) + ": " + 
-        // //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 0]) + " " +
-        // //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 1]) + " " +
-        // //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 2]) + " "
-        // //     //         );
-        // //     //     }
-        // //     // }
-        //     o = 0;
-        // }
-        // if(epoch_seconds != prev_time){
-        //     prev_time = epoch_seconds;
-        //     // o++;
+        //     //     for(int j = 0; j < 2418; j++){
+        //     //         window.Write_File_Last("src/Debug", "txt",
+        //     //             " V" + std::to_string(j) + ": " + 
+        //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 0]) + " " +
+        //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 1]) + " " +
+        //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 2]) + " "
+        //     //         );
+        //     //     }
+        //     // }
+            o = 0;
+        }
+        if(epoch_seconds != prev_time){
+            prev_time = epoch_seconds;
+            // o++;
 
-        // }
+        }
         
         if(window.Ret_Button(17)){
             o = 0.5;
