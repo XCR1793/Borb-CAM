@@ -1,21 +1,25 @@
-# Project Name
-The Project Scope - Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut viverra interdum nisi. In hac habitasse platea dictumst. Integer tincidunt, felis a pellentesque scelerisque, turpis sapien lacinia lectus, eu ultricies nibh leo mollis metus. Nullam a velit condimentum, tempor felis sit amet, euismod lectus. Phasellus sed orci a lectus placerat lacinia sed ac magna. Pellentesque quis mollis dolor. Suspendisse vel imperdiet mauris, a aliquam urna. Ut mattis risus nec sem tincidunt, ac facilisis sem fringilla. Praesent placerat vehicula euismod. Suspendisse volutpat massa id massa facilisis porta. 
+# Borb CAM Slicer
+Borb CAM Slicer is a CNC toolpath generator built for makers, engineers, and artists who need real multi-axis control. It converts 3D OBJ models into clean, efficient G-code for machines ranging from simple 3-axis mills to full 6-axis CNC setups. Instead of just stacking flat slices, Borb CAM interprets triangular mesh geometry to create surface-following toolpaths that hug curves, slopes, and deep cuts — perfect for complex and organic shapes. It supports dynamic tool and machine setups, adaptive step control, and advanced multi-axis motion planning. Whether you're carving sculptures, machining parts, or building molds, Borb CAM gives you the flexibility to go from raw 3D geometry to a finished piece with fewer compromises, fewer crashes, and a lot more control.
 
-![Project_Image](.assets/Undaconstwuction.png)
+![Project_Image](.assets/SoftwareRunning-26_04_2025.png)
 
 ## Features
-* Some Mentionable Features that the Project focuses on
-
-## [Hardware](/Hardware/README.md)
-Hardware Overview - Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut viverra interdum nisi. In hac habitasse platea dictumst. Integer tincidunt, felis a pellentesque scelerisque, turpis sapien lacinia lectus, eu ultricies nibh leo mollis metus. Nullam a velit condimentum, tempor felis sit amet, euismod lectus. Phasellus sed orci a lectus placerat lacinia sed ac magna. Pellentesque quis mollis dolor. Suspendisse vel imperdiet mauris, a aliquam urna. Ut mattis risus nec sem tincidunt, ac facilisis sem fringilla. Praesent placerat vehicula euismod. Suspendisse volutpat massa id massa facilisis porta. 
-
-## [Software](/Software/README.md)
-Software Overview - Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut viverra interdum nisi. In hac habitasse platea dictumst. Integer tincidunt, felis a pellentesque scelerisque, turpis sapien lacinia lectus, eu ultricies nibh leo mollis metus. Nullam a velit condimentum, tempor felis sit amet, euismod lectus. Phasellus sed orci a lectus placerat lacinia sed ac magna. Pellentesque quis mollis dolor. Suspendisse vel imperdiet mauris, a aliquam urna. Ut mattis risus nec sem tincidunt, ac facilisis sem fringilla. Praesent placerat vehicula euismod. Suspendisse volutpat massa id massa facilisis porta. 
-
-## [Embedded](/Embedded/README.md)
-Embedded Overview - Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut viverra interdum nisi. In hac habitasse platea dictumst. Integer tincidunt, felis a pellentesque scelerisque, turpis sapien lacinia lectus, eu ultricies nibh leo mollis metus. Nullam a velit condimentum, tempor felis sit amet, euismod lectus. Phasellus sed orci a lectus placerat lacinia sed ac magna. Pellentesque quis mollis dolor. Suspendisse vel imperdiet mauris, a aliquam urna. Ut mattis risus nec sem tincidunt, ac facilisis sem fringilla. Praesent placerat vehicula euismod. Suspendisse volutpat massa id massa facilisis porta. 
+* <strong>Equation Based Tool Path: </strong> Planar Equation Support
+* <strong>Model Support: </strong> OBJ
+* <strong>Output Support: </strong> Gcode
+* <strong>Tool Pathing: </strong> 2.5D, 3D, 3-6 Dof
 
 ## Roadmap
-* Milestones: Things I've Completed/Achieved within the project
-* Work In Progress: Things I'm Working on at the moment or havent completed yet
-* Planned: Things that are planned for the future
+* Milestones: Exports Gcode
+* Milestones: Dynamic Model Loading / Unloading
+* Milestones: Triangulation Algorithm
+* Milestones: Multi Mesh Detection
+* Milestones: Mesh Disconnected Island Detection
+* Milestanes: 2D Tool Path Generation
+* Work In Progress: 2D to 2.5D Tool Path Joiner
+* Work In Progress: Tool Path Offset SDF Function
+* Work In Progress: Normal Surface Calculation
+* Work In Progress: Multi Pass Tool Path Generation
+* Planned: Better GUI
+* Planned: Better Frontend
+* Planned: Configuration Settings Menu
