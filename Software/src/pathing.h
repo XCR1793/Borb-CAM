@@ -7,6 +7,18 @@
 #include <fstream>
 #include <sstream>
 
+struct path_point{
+    Vector3 position;
+    Vector3 rotation;
+    int point_number;
+};
+
+struct path_vector_set{std::vector<path_point> point_list;};
+
+struct path_per_mesh{std::vector<path_vector_set> mesh_vector_list;};
+
+struct path_per_model{std::vector<path_per_mesh> model_vector_list;};
+
 class path{
     public:
 
@@ -89,9 +101,16 @@ class path{
     bool Path_to_Gcode0(std::vector<std::pair<Vector3, Vector3>>& positions);
     bool Path_to_Gcode1(std::vector<std::pair<Vector3, Vector3>>& positions);
 
+    /**##########################################
+     * #              Slicing Tools             #
+     * ##########################################*/
+
+
     private:
     std::string default_file_path;
     long line = 0;
+
+    std::vector<path_per_model> path_list;
 
 };
 
