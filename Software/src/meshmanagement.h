@@ -1,4 +1,4 @@
-#ifndef MESHMANAGMENT
+#ifndef MESHMANAGEMENT
 #define MESHMANAGEMENT
 
 #include <string>
