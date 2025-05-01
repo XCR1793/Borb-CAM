@@ -117,25 +117,20 @@ Vector3 mesh::Deg_Rad(Vector3 angles){
     return ((Vector3){Deg_Rad(angles.x), Deg_Rad(angles.y), Deg_Rad(angles.z)});
 }
 
-Vector3 mesh::RotXYD_XYZ(Vector3 distance_rotX_rotY) {
-    float d = distance_rotX_rotY.x;
-    float rx = distance_rotX_rotY.y;
-    float ry = distance_rotX_rotY.z;
+Vector3 mesh::NormalToRotation(Vector3 normal) {
+    // Ensure the normal is normalized
+    normal = Vector3Normalize(normal);
 
-    // Compute unit normal vector
-    float a = sin(ry) * cos(rx);
-    float b = -sin(rx);
-    float c = cos(ry) * cos(rx);
+    float pitch = asinf(-normal.y);  // up/down (rotation around X)
+    float yaw = atan2f(normal.x, normal.z);  // left/right (rotation around Y)
 
-    // Normalize the normal
-    float length = sqrt(a*a + b*b + c*c);
-    a /= length;
-    b /= length;
-    c /= length;
+    // Convert radians to degrees
+    pitch = pitch * (180.0f / PI);
+    yaw = yaw * (180.0f / PI);
 
-    // Return unit normal vector; the plane equation is ax + by + cz = d
-    return (Vector3){a, b, c};
+    return (Vector3){ pitch, yaw, 0.0f };  // Roll is undefined from a single vector
 }
+
 
 std::pair<Point, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Point lineStart, Point lineEnd) {
     Vector3 lineDir = Vector3Subtract(lineEnd.Position, lineStart.Position);  // Direction of the line

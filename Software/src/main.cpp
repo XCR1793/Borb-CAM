@@ -52,7 +52,7 @@ int main(){
     // Mesh cubeMesh = GenMeshCube(2.0f, 2.0f, 2.0f); // width, height, length
     // Model cubeModel = LoadModelFromMesh(cubeMesh);
 
-    models.Add_Model(1, "src/monkey.obj");
+    models.Add_Model(1, "src/cone.obj");
     models.Add_Model(2, "src/model.obj");
     models.Add_Model(3, "src/model.obj");
 
@@ -70,13 +70,13 @@ int main(){
     float y = 0;
     float z = 0;
     float s = 1;
-    float a = 0;
+    float a = PI/2;
     float b = 0;
     float c = 0;
     float o = 0;
 
     path paths;
-    paths.Create_File("src/OwO", "gcode");
+    paths.Create_File("src/OwO", "nc");
 
     std::vector<std::pair<Vector3, Vector3>> pathPositions;
 
@@ -92,7 +92,7 @@ int main(){
 
     bool is_pressed = 0;
 
-    float slice_size = 0.1f;
+    float slice_size = 1.0f;
 
     Model ActiveModel = models.Ret_Model(1);
 
@@ -111,7 +111,7 @@ int main(){
 
         std::vector<Line> intersectionList;
 
-        for(float i = -4; i <= 4; i += slice_size) {
+        for(float i = -100; i <= 100; i += slice_size) {
             Vector3 coefficients = slicing.rotation_coefficient(a, b);
             std::vector<Line> result = models.Intersect_Model(ActiveModel, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
             if(!result.empty() && !intersectionList.empty()){
@@ -127,14 +127,14 @@ int main(){
         
 
         auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        if((epoch_seconds != prev_time)){
+        if((epoch_seconds - prev_time >= 15)){
             prev_time = epoch_seconds;
-            // pathPositions.clear();
-            // for(auto it : intersectionList){
-            //     pathPositions.push_back(std::pair<Vector3, Vector3>(it.startLinePos, (Vector3){0, 0, 0}));
-            // }
-            // paths.Clear_File();
-            // paths.Path_to_Gcode1(pathPositions);
+            pathPositions.clear();
+            for (auto& it : intersectionList) {
+                pathPositions.push_back(std::make_pair(Vector3Zero(), models.NormalToRotation(it.startLinePoint.Normal)));
+            }
+            paths.Clear_File();
+            paths.Path_to_Gcode1(pathPositions);
 
 
 
@@ -156,11 +156,6 @@ int main(){
         //     //     }
         //     // }
             o = 0;
-        }
-        if(epoch_seconds != prev_time){
-            prev_time = epoch_seconds;
-            // o++;
-
         }
         
         if(window.Ret_Button(17)){

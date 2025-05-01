@@ -73,7 +73,7 @@ class mesh{
     float Deg_Rad(float degrees);
     Vector3 Deg_Rad(Vector3 angles);
 
-    Vector3 RotXYD_XYZ(Vector3 distance_xrot_yrot);
+    Vector3 NormalToRotation(Vector3 normal);
 
     std::pair<Point, bool> IntersectLinePlane(Vector4 planeNormal, Point lineStart, Point lineEnd);
 
