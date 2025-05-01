@@ -15,17 +15,21 @@ struct multimodel{
     Color colour = ORANGE;
 };
 
+struct Point{
+    Vector3 Position;
+    Vector3 Normal;
+};
+
 struct Triangle{
-    Vector3 Vertex1;
-    Vector3 Vertex2;
-    Vector3 Vertex3;
+    Point Vertex1;
+    Point Vertex2;
+    Point Vertex3;
+    // Vector3 Facing;
 };
 
 struct Line{
-    Vector3 startLinePos;
-    Vector3 startLineRot;
-    Vector3 endLinePos;
-    Vector3 endLineRot;
+    Point startLinePoint;
+    Point endLinePoint;
     int type; // 1 = Surface, 2 = Movement
     int meshNo;
     int islandNo;
@@ -71,7 +75,7 @@ class mesh{
 
     Vector3 RotXYD_XYZ(Vector3 distance_xrot_yrot);
 
-    std::pair<Vector3, bool> IntersectLinePlane(Vector4 planeNormal, Vector3 lineStart, Vector3 lineEnd);
+    std::pair<Point, bool> IntersectLinePlane(Vector4 planeNormal, Point lineStart, Point lineEnd);
 
     std::pair<Triangle, bool> IntersectTrianglePlane(Vector4 planeNormal, Triangle triangle);
 

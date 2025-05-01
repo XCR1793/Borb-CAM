@@ -8,6 +8,7 @@
 #include "appmanagement.h"
 #include "meshmanagement.h"
 #include "pathing.h"
+#include "slice.h"
 
 #ifndef RAYGUI_IMPLEMENTATION
     #define RAYGUI_IMPLEMENTATION
@@ -20,7 +21,7 @@
 
 int main(){
     app window;
-    window.Initialise_Window(800, 1200, 60, "Borb CAM Slicer", "src/Logo-Light.png");
+    window.Initialise_Window(1000, 1500, 60, "Borb CAM Slicer", "src/Logo-Light.png");
     Camera camera = window.Initialise_Camera((Vector3){20.0f, 20.0f, 20.0f}, (Vector3){0.0f, 8.0f, 0.0f}, (Vector3){0.0f, 1.6f, 0.0f},45.0f, CAMERA_PERSPECTIVE);
 
     Shader shader = window.Initialise_Shader();
@@ -51,7 +52,7 @@ int main(){
     // Mesh cubeMesh = GenMeshCube(2.0f, 2.0f, 2.0f); // width, height, length
     // Model cubeModel = LoadModelFromMesh(cubeMesh);
 
-    models.Add_Model(1, "src/model.obj");
+    models.Add_Model(1, "src/monkey.obj");
     models.Add_Model(2, "src/model.obj");
     models.Add_Model(3, "src/model.obj");
 
@@ -78,6 +79,9 @@ int main(){
     paths.Create_File("src/OwO", "gcode");
 
     std::vector<std::pair<Vector3, Vector3>> pathPositions;
+
+    slice slicing;
+
     //     { {1.2f, 3.4f, 5.6f}, {7.8f, 9.0f, 2.1f} }
     // };
 
@@ -108,14 +112,13 @@ int main(){
         std::vector<Line> intersectionList;
 
         for(float i = -4; i <= 4; i += slice_size) {
-            std::vector<Line> result = models.Intersect_Model(ActiveModel, (Vector4){0, 1, 0, i});
+            Vector3 coefficients = slicing.rotation_coefficient(a, b);
+            std::vector<Line> result = models.Intersect_Model(ActiveModel, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
             if(!result.empty() && !intersectionList.empty()){
                 auto lastIntersection = intersectionList.back();
                 intersectionList.push_back((Line){
-                    .startLinePos = lastIntersection.endLinePos,
-                    .startLineRot = lastIntersection.endLineRot,
-                    .endLinePos = result.front().startLinePos,
-                    .endLineRot = result.front().startLineRot,
+                    .startLinePoint = lastIntersection.endLinePoint,
+                    .endLinePoint = result.front().startLinePoint,
                     .type = 2
                 });
             }
@@ -126,12 +129,14 @@ int main(){
         auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         if((epoch_seconds != prev_time)){
             prev_time = epoch_seconds;
-            pathPositions.clear();
-            for(auto it : intersectionList){
-                pathPositions.push_back(std::pair<Vector3, Vector3>(it.startLinePos, (Vector3){0, 0, 0}));
-            }
-            paths.Clear_File();
-            paths.Path_to_Gcode1(pathPositions);
+            // pathPositions.clear();
+            // for(auto it : intersectionList){
+            //     pathPositions.push_back(std::pair<Vector3, Vector3>(it.startLinePos, (Vector3){0, 0, 0}));
+            // }
+            // paths.Clear_File();
+            // paths.Path_to_Gcode1(pathPositions);
+
+
 
         //     // window.Clear_File();
         //     // for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
@@ -170,10 +175,10 @@ int main(){
         if(window.Ret_Button(6)){z = z - 0.5;}
         if(window.Ret_Button(7)){s = s + 0.5;}
         if(window.Ret_Button(8)){s = s - 0.5;}
-        if(window.Ret_Button(9 )){a = a + PI/2;}
-        if(window.Ret_Button(10)){a = a - PI/2;}
-        if(window.Ret_Button(11)){b = b + PI/2;}
-        if(window.Ret_Button(12)){b = b - PI/2;}
+        if(window.Ret_Button(9 )){a = a + PI/10;}
+        if(window.Ret_Button(10)){a = a - PI/10;}
+        if(window.Ret_Button(11)){b = b + PI/10;}
+        if(window.Ret_Button(12)){b = b - PI/10;}
         if(window.Ret_Button(13)){c = c + 0.5;}
         if(window.Ret_Button(14)){c = c - 0.5;}
         if(window.Ret_Button(15)){slice_size = slice_size + 0.01f;}
@@ -235,29 +240,52 @@ int main(){
         // }
 
         if (!intersectionList.empty()) {
-            // Simple function to generate a unique color based on mesh and island number
-            auto GenerateColor = [](int meshNo, int islandNo) -> Color {
-                int seed = meshNo * 73856093 ^ islandNo * 19349663; // Combine numbers uniquely
-                return (Color){
-                    (unsigned char)(50 + (seed * 97) % 200),
-                    (unsigned char)(50 + (seed * 53) % 200),
-                    (unsigned char)(50 + (seed * 29) % 200),
-                    255
-                };
-            };
-        
             for (auto& line : intersectionList) {
                 if (line.type == 1) {
-                    Color color = GenerateColor(line.meshNo, line.islandNo);
-                    DrawLine3D(line.startLinePos, line.endLinePos, color);
+                    Vector3 normal = line.startLinePoint.Normal;
+        
+                    Color color = {
+                        (unsigned char)((normal.x * 0.5f + 0.5f) * 255), // Red = X axis
+                        (unsigned char)((normal.y * 0.5f + 0.5f) * 255), // Green = Y axis
+                        (unsigned char)((normal.z * 0.5f + 0.5f) * 255), // Blue = Z axis
+                        255
+                    };
+        
+                    DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
                 }
         
-                // Optional: type 2 lines if needed
+                // Optional: type 2 lines
                 // if (line.type == 2) {
-                //     DrawLine3D(line.startLinePos, line.endLinePos, ORANGE);
+                //     DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, ORANGE);
                 // }
             }
         }
+        
+
+        // if (!intersectionList.empty()) {
+        //     // Simple function to generate a unique color based on mesh and island number
+        //     auto GenerateColor = [](int meshNo, int islandNo) -> Color {
+        //         int seed = meshNo * 73856093 ^ islandNo * 19349663; // Combine numbers uniquely
+        //         return (Color){
+        //             (unsigned char)(50 + (seed * 97) % 200),
+        //             (unsigned char)(50 + (seed * 53) % 200),
+        //             (unsigned char)(50 + (seed * 29) % 200),
+        //             255
+        //         };
+        //     };
+        
+        //     for (auto& line : intersectionList) {
+        //         if (line.type == 1) {
+        //             Color color = GenerateColor(line.meshNo, line.islandNo);
+        //             DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
+        //         }
+        
+        //         // Optional: type 2 lines if needed
+        //         // if (line.type == 2) {
+        //         //     DrawLine3D(line.startLinePos, line.endLinePos, ORANGE);
+        //         // }
+        //     }
+        // }
         
         
         // const int NUM_ISLANDS = 2;

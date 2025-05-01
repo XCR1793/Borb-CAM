@@ -137,30 +137,82 @@ Vector3 mesh::RotXYD_XYZ(Vector3 distance_rotX_rotY) {
     return (Vector3){a, b, c};
 }
 
-
-
-std::pair<Vector3, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Vector3 lineStart, Vector3 lineEnd) {
-    Vector3 lineDir = Vector3Subtract(lineEnd, lineStart);  // Direction of the line
+std::pair<Point, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Point lineStart, Point lineEnd) {
+    Vector3 lineDir = Vector3Subtract(lineEnd.Position, lineStart.Position);  // Direction of the line
     Vector3 normal = { planeNormal.x, planeNormal.y, planeNormal.z };  // Extract plane normal (a, b, c)
     float denom = Vector3DotProduct(normal, lineDir);  // Dot product between plane normal and line direction
 
     if (fabsf(denom) < 1e-6f) {
         // Line is parallel to the plane
-        return { Vector3Zero(), false };
+        return { {}, false };
     }
 
-    // Compute t using the plane equation ax + by + cz = d
-    float numerator = planeNormal.w - Vector3DotProduct(normal, lineStart);
+    float numerator = planeNormal.w - Vector3DotProduct(normal, lineStart.Position);
     float t = numerator / denom;
 
     if (t < 0.0f || t > 1.0f) {
         // Intersection is outside the segment
-        return { Vector3Zero(), false };
+        return { {}, false };
     }
 
-    Vector3 intersection = Vector3Add(lineStart, Vector3Scale(lineDir, t));
-    return { intersection, true };
+    // Compute position of intersection
+    Vector3 intersection = Vector3Add(lineStart.Position, Vector3Scale(lineDir, t));
+
+    // Linearly interpolate normals
+    Vector3 interpolatedNormal = Vector3Normalize(Vector3Add(
+        Vector3Scale(lineStart.Normal, 1.0f - t),
+        Vector3Scale(lineEnd.Normal, t)
+    ));
+
+    return { { .Position = intersection, .Normal = interpolatedNormal }, true };
 }
+
+
+// std::pair<Point, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Point lineStart, Point lineEnd) {
+//     Vector3 lineDir = Vector3Subtract(lineEnd.Position, lineStart.Position);  // Direction of the line
+//     Vector3 normal = { planeNormal.x, planeNormal.y, planeNormal.z };  // Extract plane normal (a, b, c)
+//     float denom = Vector3DotProduct(normal, lineDir);  // Dot product between plane normal and line direction
+
+//     if (fabsf(denom) < 1e-6f) {
+//         // Line is parallel to the plane
+//         return { {}, false };
+//     }
+
+//     float numerator = planeNormal.w - Vector3DotProduct(normal, lineStart.Position);
+//     float t = numerator / denom;
+
+//     if (t < 0.0f || t > 1.0f) {
+//         // Intersection is outside the segment
+//         return { {}, false };
+//     }
+
+//     Vector3 intersection = Vector3Add(lineStart.Position, Vector3Scale(lineDir, t));
+//     return { { .Position = intersection, .Normal = {} }, true };
+// }
+
+
+// std::pair<Vector3, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Vector3 lineStart, Vector3 lineEnd) {
+//     Vector3 lineDir = Vector3Subtract(lineEnd, lineStart);  // Direction of the line
+//     Vector3 normal = { planeNormal.x, planeNormal.y, planeNormal.z };  // Extract plane normal (a, b, c)
+//     float denom = Vector3DotProduct(normal, lineDir);  // Dot product between plane normal and line direction
+
+//     if (fabsf(denom) < 1e-6f) {
+//         // Line is parallel to the plane
+//         return { Vector3Zero(), false };
+//     }
+
+//     // Compute t using the plane equation ax + by + cz = d
+//     float numerator = planeNormal.w - Vector3DotProduct(normal, lineStart);
+//     float t = numerator / denom;
+
+//     if (t < 0.0f || t > 1.0f) {
+//         // Intersection is outside the segment
+//         return { Vector3Zero(), false };
+//     }
+
+//     Vector3 intersection = Vector3Add(lineStart, Vector3Scale(lineDir, t));
+//     return { intersection, true };
+// }
 
 std::pair<Triangle, bool> mesh::IntersectTrianglePlane(Vector4 planeNormal, Triangle triangle){
     std::pair<Triangle, bool> Intersecting = {triangle, 0};
@@ -198,13 +250,32 @@ std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model mo
     for (long i = 0; i < model.meshCount; i++){
         std::vector<std::pair<int, Triangle>> Mesh_Triangles;
         float* vertices = model.meshes[i].vertices;
+        float* normals = model.meshes[i].normals;
         long vertexCount = model.meshes[i].vertexCount;
 
         for (long j = 0; j < vertexCount; j += 3){
+            Vector3 v1 = {vertices[(j * 3) + 0], vertices[(j * 3) + 1], vertices[(j * 3) + 2]};
+            Vector3 v2 = {vertices[(j * 3) + 3], vertices[(j * 3) + 4], vertices[(j * 3) + 5]};
+            Vector3 v3 = {vertices[(j * 3) + 6], vertices[(j * 3) + 7], vertices[(j * 3) + 8]};
+
+            Vector3 n1 = {}, n2 = {}, n3 = {};
+
+            if (normals != nullptr){
+                n1 = {normals[(j * 3) + 0], normals[(j * 3) + 1], normals[(j * 3) + 2]};
+                n2 = {normals[(j * 3) + 3], normals[(j * 3) + 4], normals[(j * 3) + 5]};
+                n3 = {normals[(j * 3) + 6], normals[(j * 3) + 7], normals[(j * 3) + 8]};
+            } else {
+                // Fallback: compute face normal and assign it to all three points
+                Vector3 edge1 = Vector3Subtract(v2, v1);
+                Vector3 edge2 = Vector3Subtract(v3, v1);
+                Vector3 faceNormal = Vector3Normalize(Vector3CrossProduct(edge1, edge2));
+                n1 = n2 = n3 = faceNormal;
+            }
+
             Triangle tri = {
-                (Vector3){vertices[(j * 3) + 0], vertices[(j * 3) + 1], vertices[(j * 3) + 2]},
-                (Vector3){vertices[(j * 3) + 3], vertices[(j * 3) + 4], vertices[(j * 3) + 5]},
-                (Vector3){vertices[(j * 3) + 6], vertices[(j * 3) + 7], vertices[(j * 3) + 8]},
+                .Vertex1 = {v1, n1},
+                .Vertex2 = {v2, n2},
+                .Vertex3 = {v3, n3}
             };
 
             Mesh_Triangles.emplace_back(i, tri);
@@ -217,23 +288,134 @@ std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model mo
 }
 
 
+// std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model model){
+//     std::vector<std::vector<std::pair<int, Triangle>>> All_Triangles;
+
+//     for (long i = 0; i < model.meshCount; i++){
+//         std::vector<std::pair<int, Triangle>> Mesh_Triangles;
+//         float* vertices = model.meshes[i].vertices;
+//         float* normals = model.meshes[i].normals;
+//         long vertexCount = model.meshes[i].vertexCount;
+
+//         for (long j = 0; j < vertexCount; j += 3){
+//             Vector3 v1 = {vertices[(j * 3) + 0], vertices[(j * 3) + 1], vertices[(j * 3) + 2]};
+//             Vector3 v2 = {vertices[(j * 3) + 3], vertices[(j * 3) + 4], vertices[(j * 3) + 5]};
+//             Vector3 v3 = {vertices[(j * 3) + 6], vertices[(j * 3) + 7], vertices[(j * 3) + 8]};
+
+//             Vector3 n1 = {normals[(j * 3) + 0], normals[(j * 3) + 1], normals[(j * 3) + 2]};
+//             Vector3 n2 = {normals[(j * 3) + 3], normals[(j * 3) + 4], normals[(j * 3) + 5]};
+//             Vector3 n3 = {normals[(j * 3) + 6], normals[(j * 3) + 7], normals[(j * 3) + 8]};
+
+//             Triangle tri = {
+//                 .Vertex1 = {v1, n1},
+//                 .Vertex2 = {v2, n2},
+//                 .Vertex3 = {v3, n3}
+//             };
+
+//             Mesh_Triangles.emplace_back(i, tri);
+//         }
+
+//         All_Triangles.push_back(Mesh_Triangles);
+//     }
+
+//     return All_Triangles;
+// }
+
+
+// std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model model){
+//     std::vector<std::vector<std::pair<int, Triangle>>> All_Triangles;
+
+//     for (long i = 0; i < model.meshCount; i++){
+//         std::vector<std::pair<int, Triangle>> Mesh_Triangles;
+//         float* vertices = model.meshes[i].vertices;
+//         long vertexCount = model.meshes[i].vertexCount;
+
+//         for (long j = 0; j < vertexCount; j += 3){
+//             Vector3 v1 = {vertices[(j * 3) + 0], vertices[(j * 3) + 1], vertices[(j * 3) + 2]};
+//             Vector3 v2 = {vertices[(j * 3) + 3], vertices[(j * 3) + 4], vertices[(j * 3) + 5]};
+//             Vector3 v3 = {vertices[(j * 3) + 6], vertices[(j * 3) + 7], vertices[(j * 3) + 8]};
+
+//             // Calculate normal from cross product of two triangle edges
+//             Vector3 edge1 = Vector3Subtract(v2, v1);
+//             Vector3 edge2 = Vector3Subtract(v3, v1);
+//             Vector3 normal = Vector3Normalize(Vector3CrossProduct(edge1, edge2));
+
+//             Triangle tri = {
+//                 .Vertex1 = {v1, normal},
+//                 .Vertex2 = {v2, normal},
+//                 .Vertex3 = {v3, normal}
+//             };
+
+//             Mesh_Triangles.emplace_back(i, tri);
+//         }
+
+//         All_Triangles.push_back(Mesh_Triangles);
+//     }
+
+//     return All_Triangles;
+// }
+
+
+// std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model model){
+//     std::vector<std::vector<std::pair<int, Triangle>>> All_Triangles;
+
+//     for (long i = 0; i < model.meshCount; i++){
+//         std::vector<std::pair<int, Triangle>> Mesh_Triangles;
+//         float* vertices = model.meshes[i].vertices;
+//         long vertexCount = model.meshes[i].vertexCount;
+
+//         for (long j = 0; j < vertexCount; j += 3){
+//             Triangle tri = {
+//                 (Vector3){vertices[(j * 3) + 0], vertices[(j * 3) + 1], vertices[(j * 3) + 2]},
+//                 (Vector3){vertices[(j * 3) + 3], vertices[(j * 3) + 4], vertices[(j * 3) + 5]},
+//                 (Vector3){vertices[(j * 3) + 6], vertices[(j * 3) + 7], vertices[(j * 3) + 8]},
+//             };
+
+//             Mesh_Triangles.emplace_back(i, tri);
+//         }
+
+//         All_Triangles.push_back(Mesh_Triangles);
+//     }
+
+//     return All_Triangles;
+// }
+
 int mesh::Triangle_Touching(Triangle first, Triangle second){
     int i = 0;
 
-    if( (first.Vertex1 == second.Vertex1) || 
-        (first.Vertex1 == second.Vertex2) || 
-        (first.Vertex1 == second.Vertex3)) i++;
+    if( (first.Vertex1.Position == second.Vertex1.Position) || 
+        (first.Vertex1.Position == second.Vertex2.Position) || 
+        (first.Vertex1.Position == second.Vertex3.Position)) i++;
 
-    if( (first.Vertex2 == second.Vertex1) || 
-        (first.Vertex2 == second.Vertex2) || 
-        (first.Vertex2 == second.Vertex3)) i++;
+    if( (first.Vertex2.Position == second.Vertex1.Position) || 
+        (first.Vertex2.Position == second.Vertex2.Position) || 
+        (first.Vertex2.Position == second.Vertex3.Position)) i++;
 
-    if( (first.Vertex3 == second.Vertex1) || 
-        (first.Vertex3 == second.Vertex2) || 
-        (first.Vertex3 == second.Vertex3)) i++;
+    if( (first.Vertex3.Position == second.Vertex1.Position) || 
+        (first.Vertex3.Position == second.Vertex2.Position) || 
+        (first.Vertex3.Position == second.Vertex3.Position)) i++;
 
     return i;
 }
+
+
+// int mesh::Triangle_Touching(Triangle first, Triangle second){
+//     int i = 0;
+
+//     if( (first.Vertex1 == second.Vertex1) || 
+//         (first.Vertex1 == second.Vertex2) || 
+//         (first.Vertex1 == second.Vertex3)) i++;
+
+//     if( (first.Vertex2 == second.Vertex1) || 
+//         (first.Vertex2 == second.Vertex2) || 
+//         (first.Vertex2 == second.Vertex3)) i++;
+
+//     if( (first.Vertex3 == second.Vertex1) || 
+//         (first.Vertex3 == second.Vertex2) || 
+//         (first.Vertex3 == second.Vertex3)) i++;
+
+//     return i;
+// }
 
 
 std::vector<std::pair<int, Triangle>> mesh::Sort_Triangles(std::vector<std::pair<int, Triangle>> Unsorted_Triangles) {
@@ -317,59 +499,6 @@ std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> mesh::Intersecti
     return Sorted_Triangles_Islands_Accounted;
 }
 
-
-
-// std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
-//     std::vector<std::pair<std::pair<std::pair<Vector3, Vector3>, int>, int>> intersectionList;
-//     std::vector<Line> Lines;
-
-//     std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
-
-//     int meshNo = 0;
-//     int island = 0;
-
-//     for(auto perMesh : Triangle_List){
-//         for(auto perIsland : perMesh){
-//             for(auto perTriangle : perIsland){
-//                 std::pair<Vector3, bool> Intersection1 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex1, perTriangle.second.Vertex3);
-//                 std::pair<Vector3, bool> Intersection2 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex2, perTriangle.second.Vertex1);
-//                 std::pair<Vector3, bool> Intersection3 = IntersectLinePlane(Coeff_abcd, perTriangle.second.Vertex3, perTriangle.second.Vertex2);
-            
-//                 if(Intersection1.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection1.first, (Vector3){}), island), meshNo));}
-//                 if(Intersection2.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection2.first, (Vector3){}), island), meshNo));}
-//                 if(Intersection3.second){intersectionList.push_back(std::make_pair(std::make_pair(std::make_pair(Intersection3.first, (Vector3){}), island), meshNo));}
-//             }
-//             island++;
-//         }
-//         meshNo++;
-//     }
-
-//     if(intersectionList.size() < 2){
-//         return Lines;
-//     }
-    
-//     for (size_t i = 0; i < intersectionList.size() - 1; i++) {
-//         auto& current = intersectionList[i];
-//         auto& next = intersectionList[i + 1];
-    
-//         if (current.second == next.second &&
-//             current.first.second == next.first.second) {
-    
-//             Lines.push_back((Line){
-//                 .startLinePos = current.first.first.first,
-//                 .startLineRot = current.first.first.second,
-//                 .endLinePos = next.first.first.first,
-//                 .endLineRot = next.first.first.second,
-//                 .type = 1,
-//                 .meshNo = current.second,
-//                 .islandNo = current.first.second
-//             });
-//         }
-//     }
-
-//     return Lines;
-// }
-
 std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
     std::vector<Line> Lines;
     std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
@@ -382,31 +511,25 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
         for(auto &perIsland : perMesh){
             for (auto &perTriangle : perIsland){
                 Triangle tri = perTriangle.second;
-                
-                // Store all edge intersections for this triangle
-                std::vector<Vector3> intersections;
+                std::vector<Point> intersections;
 
-                std::pair<Vector3, bool> i1 = IntersectLinePlane(Coeff_abcd, tri.Vertex1, tri.Vertex3); // Edge 1-3
-                std::pair<Vector3, bool> i2 = IntersectLinePlane(Coeff_abcd, tri.Vertex2, tri.Vertex1); // Edge 2-1
-                std::pair<Vector3, bool> i3 = IntersectLinePlane(Coeff_abcd, tri.Vertex3, tri.Vertex2); // Edge 3-2
+                auto i1 = IntersectLinePlane(Coeff_abcd, tri.Vertex1, tri.Vertex3);
+                auto i2 = IntersectLinePlane(Coeff_abcd, tri.Vertex2, tri.Vertex1);
+                auto i3 = IntersectLinePlane(Coeff_abcd, tri.Vertex3, tri.Vertex2);
 
-                if(i1.second)intersections.push_back(i1.first);
-                if(i2.second)intersections.push_back(i2.first);
-                if(i3.second)intersections.push_back(i3.first);
+                if(i1.second) intersections.push_back(i1.first);
+                if(i2.second) intersections.push_back(i2.first);
+                if(i3.second) intersections.push_back(i3.first);
 
                 if(intersections.size() == 2){
-                    // Form a line from the two points
                     Lines.push_back((Line){
-                        .startLinePos = intersections[0],
-                        .startLineRot = {},
-                        .endLinePos = intersections[1],
-                        .endLineRot = {},
+                        .startLinePoint = intersections[0],
+                        .endLinePoint = intersections[1],
                         .type = 1,
                         .meshNo = meshNo,
                         .islandNo = island
                     });
                 }
-                // If 3 or more intersections, something is wrong (shouldn't happen for a triangle)
             }
             island++;
         }
@@ -415,6 +538,53 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
 
     return Lines;
 }
+
+
+// std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
+//     std::vector<Line> Lines;
+//     std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
+
+//     int meshNo = 0;
+//     int island = 0;
+
+//     for(auto &perMesh : Triangle_List){
+//         island = 0;
+//         for(auto &perIsland : perMesh){
+//             for (auto &perTriangle : perIsland){
+//                 Triangle tri = perTriangle.second;
+                
+//                 // Store all edge intersections for this triangle
+//                 std::vector<Vector3> intersections;
+
+//                 std::pair<Vector3, bool> i1 = IntersectLinePlane(Coeff_abcd, tri.Vertex1, tri.Vertex3); // Edge 1-3
+//                 std::pair<Vector3, bool> i2 = IntersectLinePlane(Coeff_abcd, tri.Vertex2, tri.Vertex1); // Edge 2-1
+//                 std::pair<Vector3, bool> i3 = IntersectLinePlane(Coeff_abcd, tri.Vertex3, tri.Vertex2); // Edge 3-2
+
+//                 if(i1.second)intersections.push_back(i1.first);
+//                 if(i2.second)intersections.push_back(i2.first);
+//                 if(i3.second)intersections.push_back(i3.first);
+
+//                 if(intersections.size() == 2){
+//                     // Form a line from the two points
+//                     Lines.push_back((Line){
+//                         .startLinePos = intersections[0],
+//                         .startLineRot = {},
+//                         .endLinePos = intersections[1],
+//                         .endLineRot = {},
+//                         .type = 1,
+//                         .meshNo = meshNo,
+//                         .islandNo = island
+//                     });
+//                 }
+//                 // If 3 or more intersections, something is wrong (shouldn't happen for a triangle)
+//             }
+//             island++;
+//         }
+//         meshNo++;
+//     }
+
+//     return Lines;
+// }
 
 
 /**##########################################
