@@ -117,49 +117,34 @@ Vector3 mesh::Deg_Rad(Vector3 angles){
     return ((Vector3){Deg_Rad(angles.x), Deg_Rad(angles.y), Deg_Rad(angles.z)});
 }
 
-Vector3 mesh::NormalToRotation(Vector3 normal) {
-    // Ensure the normal is normalized
+Vector3 mesh::NormalToRotation(Vector3 normal){
     normal = Vector3Normalize(normal);
-
-    float pitch = asinf(-normal.y);  // up/down (rotation around X)
-    float yaw = atan2f(normal.x, normal.z);  // left/right (rotation around Y)
-
-    // Convert radians to degrees
+    float pitch = asinf(-normal.y);
+    float yaw = atan2f(normal.x, normal.z);
     pitch = pitch * (180.0f / PI);
     yaw = yaw * (180.0f / PI);
-
-    return (Vector3){ pitch, yaw, 0.0f };  // Roll is undefined from a single vector
+    return (Vector3){ pitch, yaw, 0.0f };
 }
 
+std::pair<Point, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Point lineStart, Point lineEnd){
+    Vector3 lineDir = Vector3Subtract(lineEnd.Position, lineStart.Position);
+    Vector3 normal = {planeNormal.x, planeNormal.y, planeNormal.z};
+    float denom = Vector3DotProduct(normal, lineDir);
 
-std::pair<Point, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Point lineStart, Point lineEnd) {
-    Vector3 lineDir = Vector3Subtract(lineEnd.Position, lineStart.Position);  // Direction of the line
-    Vector3 normal = { planeNormal.x, planeNormal.y, planeNormal.z };  // Extract plane normal (a, b, c)
-    float denom = Vector3DotProduct(normal, lineDir);  // Dot product between plane normal and line direction
-
-    if (fabsf(denom) < 1e-6f) {
-        // Line is parallel to the plane
-        return { {}, false };
-    }
+    if(fabsf(denom) < 1e-6f){return {{}, false};}
 
     float numerator = planeNormal.w - Vector3DotProduct(normal, lineStart.Position);
     float t = numerator / denom;
 
-    if (t < 0.0f || t > 1.0f) {
-        // Intersection is outside the segment
-        return { {}, false };
-    }
+    if(t < 0.0f || t > 1.0f){return {{}, false};}
 
-    // Compute position of intersection
     Vector3 intersection = Vector3Add(lineStart.Position, Vector3Scale(lineDir, t));
-
-    // Linearly interpolate normals
     Vector3 interpolatedNormal = Vector3Normalize(Vector3Add(
         Vector3Scale(lineStart.Normal, 1.0f - t),
         Vector3Scale(lineEnd.Normal, t)
     ));
 
-    return { { .Position = intersection, .Normal = interpolatedNormal }, true };
+    return {{.Position = intersection, .Normal = interpolatedNormal}, true};
 }
 
 
@@ -221,22 +206,75 @@ std::pair<Triangle, bool> mesh::IntersectTrianglePlane(Vector4 planeNormal, Tria
  * #       Mesh Manipulation Functions      #
  * ##########################################*/
 
-Model mesh::Scale_Model(Model &model, float scale){
-    model.transform = MatrixScale(scale, scale, scale);
-    return model;
+ multimodel mesh::Scale_Model(multimodel &mmodel, float scale){
+    mmodel.scale = scale;
+    Matrix scaleMat = MatrixScale(scale, scale, scale);
+    mmodel.model.transform = MatrixMultiply(scaleMat, mmodel.model.transform);
+    return mmodel;
 }
 
-Model mesh::Position_Model(Model &model, Vector3 position){
-    model.transform = MatrixMultiply(MatrixTranslate(position.x, position.y, position.z),model.transform);
-    return model;
+multimodel mesh::Position_Model(multimodel &mmodel, Vector3 position){
+    mmodel.pos = position;
+    Matrix translateMat = MatrixTranslate(position.x, position.y, position.z);
+    mmodel.model.transform = MatrixMultiply(mmodel.model.transform, translateMat);
+    return mmodel;
 }
 
-Model mesh::Rotate_Model(Model &model, Vector3 rotatiton){
-    Matrix rotx = MatrixRotateX(rotatiton.x);
-    Matrix roty = MatrixRotateY(rotatiton.y);
-    Matrix rotz = MatrixRotateZ(rotatiton.z);
-    model.transform = MatrixMultiply(model.transform, MatrixMultiply(MatrixMultiply(rotx, roty), rotz));
-    return model;
+multimodel mesh::Rotate_Model(multimodel &mmodel, Vector3 rotation){
+    mmodel.rot = rotation;
+    Matrix rotX = MatrixRotateX(rotation.x);
+    Matrix rotY = MatrixRotateY(rotation.y);
+    Matrix rotZ = MatrixRotateZ(rotation.z);
+    Matrix rotMat = MatrixMultiply(MatrixMultiply(rotX, rotY), rotZ);
+    mmodel.model.transform = MatrixMultiply(mmodel.model.transform, rotMat);
+    return mmodel;
+}
+
+multimodel mesh::Apply_Transformations(multimodel &mmodel){
+    Matrix scaleMat = MatrixScale(mmodel.scale, mmodel.scale, mmodel.scale);
+    Matrix rotX = MatrixRotateX(mmodel.rot.x);
+    Matrix rotY = MatrixRotateY(mmodel.rot.y);
+    Matrix rotZ = MatrixRotateZ(mmodel.rot.z);
+    Matrix rotMat = MatrixMultiply(MatrixMultiply(rotX, rotY), rotZ);
+    Matrix transMat = MatrixTranslate(mmodel.pos.x, mmodel.pos.y, mmodel.pos.z);
+    Matrix transform = MatrixMultiply(MatrixMultiply(scaleMat, rotMat), transMat);
+
+    for(int i = 0; i < mmodel.model.meshCount; i++){
+        Mesh &mesh = mmodel.model.meshes[i];
+        for(int j = 0; j < mesh.vertexCount; j++){
+            Vector3 vertex = {
+                mesh.vertices[j * 3 + 0],
+                mesh.vertices[j * 3 + 1],
+                mesh.vertices[j * 3 + 2]
+            };
+            vertex = Vector3Transform(vertex, transform);
+            mesh.vertices[j * 3 + 0] = vertex.x;
+            mesh.vertices[j * 3 + 1] = vertex.y;
+            mesh.vertices[j * 3 + 2] = vertex.z;
+        }
+
+        if(mesh.normals != nullptr){
+            Matrix normalTransform = transform;
+            normalTransform.m12 = 0;
+            normalTransform.m13 = 0;
+            normalTransform.m14 = 0;
+
+            for(int j = 0; j < mesh.vertexCount; j++){
+                Vector3 normal = {
+                    mesh.normals[j * 3 + 0],
+                    mesh.normals[j * 3 + 1],
+                    mesh.normals[j * 3 + 2]
+                };
+                normal = Vector3Transform(normal, normalTransform);
+                normal = Vector3Normalize(normal);
+                mesh.normals[j * 3 + 0] = normal.x;
+                mesh.normals[j * 3 + 1] = normal.y;
+                mesh.normals[j * 3 + 2] = normal.z;
+            }
+        }
+    }
+
+    return mmodel;
 }
 
 std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model model){

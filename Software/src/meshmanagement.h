@@ -73,7 +73,7 @@ class mesh{
     float Deg_Rad(float degrees);
     Vector3 Deg_Rad(Vector3 angles);
 
-    Vector3 NormalToRotation(Vector3 normal);
+    Vector3 NormalToRotation(Vector3 normal); // Currently Not Working Properly
 
     std::pair<Point, bool> IntersectLinePlane(Vector4 planeNormal, Point lineStart, Point lineEnd);
 
@@ -90,11 +90,21 @@ class mesh{
      * #       Mesh Manipulation Functions      #
      * ##########################################*/
 
-    Model Scale_Model(Model &model, float scale);
+    // Model Scale_Model(Model &model, float scale);
 
-    Model Position_Model(Model &model, Vector3 position);
+    // Model Position_Model(Model &model, Vector3 position);
 
-    Model Rotate_Model(Model &model, Vector3 rotatiton);
+    // Model Rotate_Model(Model &model, Vector3 rotatiton);
+
+    // Model Apply_Transformations(Model &model);
+
+    multimodel Scale_Model(multimodel &model, float scale);
+
+    multimodel Position_Model(multimodel &model, Vector3 position);
+
+    multimodel Rotate_Model(multimodel &model, Vector3 rotatiton);
+
+    multimodel Apply_Transformations(multimodel &model);
 
     std::vector<std::vector<std::pair<int, Triangle>>> List_Triangles(Model model);
 

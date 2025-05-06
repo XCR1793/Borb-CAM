@@ -52,27 +52,36 @@ int main(){
     // Mesh cubeMesh = GenMeshCube(2.0f, 2.0f, 2.0f); // width, height, length
     // Model cubeModel = LoadModelFromMesh(cubeMesh);
 
-    models.Add_Model(1, "src/cone.obj");
+    models.Add_Model(1, "src/monkey.obj");
     models.Add_Model(2, "src/model.obj");
     models.Add_Model(3, "src/model.obj");
 
-    Model model2 = models.Ret_Model(2);
-    models.Position_Model(model2, (Vector3){5, 0, 0});
-    models.Reu_Model(2, model2);
+    // Model model2 = models.Ret_Model(2);
+    // models.Position_Model(model2, (Vector3){5, 0, 0});
+    // models.Reu_Model(2, model2);
 
-    Model model3 = models.Ret_Model(3);
+    // Model model3 = models.Ret_Model(3);
+    // models.Position_Model(model3, (Vector3){-5, 0, 0});
+    // models.Reu_Model(3, model3);
+
+    multimodel model2 = { .id = 2, .model = models.Ret_Model(2) };
+    models.Position_Model(model2, (Vector3){5, 0, 0});
+    models.Reu_Model(2, model2.model);
+    
+    multimodel model3 = { .id = 3, .model = models.Ret_Model(3) };
     models.Position_Model(model3, (Vector3){-5, 0, 0});
-    models.Reu_Model(3, model3);
+    models.Reu_Model(3, model3.model);
+    
 
     models.Sha_Model(shader);
 
-    float x = 0;
-    float y = 0;
-    float z = 0;
-    float s = 1;
-    float a = PI/2;
-    float b = 0;
-    float c = 0;
+    float x = 0, xk = 0;
+    float y = 0, yk = 0;
+    float z = 0, zk = 0;
+    float s = 1, sk = 1;
+    float a = 0, ak = 0;
+    float b = 0, bk = 0;
+    float c = 0, ck = 0;
     float o = 0;
 
     path paths;
@@ -90,11 +99,7 @@ int main(){
     auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     auto prev_time = epoch_seconds;
 
-    bool is_pressed = 0;
-
-    float slice_size = 1.0f;
-
-    Model ActiveModel = models.Ret_Model(1);
+    float slice_size = 0.1f;
 
     while(!WindowShouldClose()){
 
@@ -107,34 +112,18 @@ int main(){
         // Vector3 line_end   = {x-10, y-10, z-10};
         // std::pair<Vector3, bool> intersection = models.IntersectLinePlane((Vector3){0, 1, 0}, (Vector3){10, 1, 5}, (Vector3){10, -1, 5});
 
-        Model currentmodel = models.Ret_Model(1);
-
-        std::vector<Line> intersectionList;
-
-        for(float i = -100; i <= 100; i += slice_size) {
-            Vector3 coefficients = slicing.rotation_coefficient(a, b);
-            std::vector<Line> result = models.Intersect_Model(ActiveModel, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
-            if(!result.empty() && !intersectionList.empty()){
-                auto lastIntersection = intersectionList.back();
-                intersectionList.push_back((Line){
-                    .startLinePoint = lastIntersection.endLinePoint,
-                    .endLinePoint = result.front().startLinePoint,
-                    .type = 2
-                });
-            }
-            intersectionList.insert(intersectionList.end(), result.begin(), result.end());
-        }
+        // Model currentmodel = models.Ret_Model(1);
         
 
-        auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        if((epoch_seconds - prev_time >= 15)){
-            prev_time = epoch_seconds;
-            pathPositions.clear();
-            for (auto& it : intersectionList) {
-                pathPositions.push_back(std::make_pair(Vector3Zero(), models.NormalToRotation(it.startLinePoint.Normal)));
-            }
-            paths.Clear_File();
-            paths.Path_to_Gcode1(pathPositions);
+        // auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        // if((epoch_seconds - prev_time >= 15)){
+            // prev_time = epoch_seconds;
+            // pathPositions.clear();
+            // for (auto& it : intersectionList) {
+            //     pathPositions.push_back(std::make_pair(Vector3Zero(), models.NormalToRotation(it.startLinePoint.Normal)));
+            // }
+            // paths.Clear_File();
+            // paths.Path_to_Gcode1(pathPositions);
 
 
 
@@ -155,54 +144,88 @@ int main(){
         //     //         );
         //     //     }
         //     // }
-            o = 0;
-        }
+        //     o = 0;
+        // }
         
         if(window.Ret_Button(17)){
             o = 0.5;
         }
 
-        if(window.Ret_Button(1)){x = x + 0.5;}
-        if(window.Ret_Button(2)){x = x - 0.5;}
-        if(window.Ret_Button(3)){y = y + 0.5;}
-        if(window.Ret_Button(4)){y = y - 0.5;}
-        if(window.Ret_Button(5)){z = z + 0.5;}
-        if(window.Ret_Button(6)){z = z - 0.5;}
-        if(window.Ret_Button(7)){s = s + 0.5;}
-        if(window.Ret_Button(8)){s = s - 0.5;}
-        if(window.Ret_Button(9 )){a = a + PI/10;}
-        if(window.Ret_Button(10)){a = a - PI/10;}
-        if(window.Ret_Button(11)){b = b + PI/10;}
-        if(window.Ret_Button(12)){b = b - PI/10;}
-        if(window.Ret_Button(13)){c = c + 0.5;}
-        if(window.Ret_Button(14)){c = c - 0.5;}
+        if(window.Ret_Button(1)){x = x + 0.5; xk = 0.5;}
+        if(window.Ret_Button(2)){x = x - 0.5; xk = -0.5;}
+        if(window.Ret_Button(3)){y = y + 0.5; yk = 0.5;}
+        if(window.Ret_Button(4)){y = y - 0.5; yk = -0.5;}
+        if(window.Ret_Button(5)){z = z + 0.5; zk = 0.5;}
+        if(window.Ret_Button(6)){z = z - 0.5; zk = -0.5;}
+        if(window.Ret_Button(7)){s = s + 0.5; sk = 1.5;}
+        if(window.Ret_Button(8)){s = s - 0.5; sk = 0.5;}
+        if(window.Ret_Button(9 )){a = a + PI/10; ak = PI/10;}
+        if(window.Ret_Button(10)){a = a - PI/10; ak = -PI/10;}
+        if(window.Ret_Button(11)){b = b + PI/10; bk = PI/10;}
+        if(window.Ret_Button(12)){b = b - PI/10; bk = -PI/10;}
+        if(window.Ret_Button(13)){c = c + 0.5; ck = 0.5;}
+        if(window.Ret_Button(14)){c = c - 0.5; ck = -0.5;}
         if(window.Ret_Button(15)){slice_size = slice_size + 0.01f;}
         if(window.Ret_Button(16)){slice_size = slice_size - 0.01f;}
         if(slice_size <= 0){slice_size = 0.01f;}
 
-        models.Rep_Model(1, (Vector3){x, y, z});
+        // models.Rep_Model(1, (Vector3){x, y, z});
 
-        models.Scale_Model(currentmodel, s);
+        // models.Scale_Model(currentmodel, s);
 
-        models.Rotate_Model(currentmodel, (Vector3){a, b, c});
+        // models.Rotate_Model(currentmodel, (Vector3){a, b, c});
 
-        models.Reu_Model(1, currentmodel);
+        // models.Position_Model(currentmodel, (Vector3){xk, yk, zk});
 
-        if(is_pressed){
-            is_pressed = 0;
-            ActiveModel = currentmodel;
+        // models.Reu_Model(1, models.Apply_Transformations(currentmodel));
+
+        multimodel currentmodel = { .id = 1, .model = models.Ret_Model(1) };
+
+        models.Scale_Model(currentmodel, sk);
+        models.Rotate_Model(currentmodel, (Vector3){ak, bk, ck});
+        models.Position_Model(currentmodel, (Vector3){xk, yk, zk});
+        models.Apply_Transformations(currentmodel);
+        models.Reu_Model(1, currentmodel.model);
+
+        std::vector<Line> intersectionList;
+
+        for(float i = -4; i <= 4; i += slice_size) {
+            Vector3 coefficients = slicing.rotation_coefficient(0,0);
+            std::vector<Line> result = models.Intersect_Model(currentmodel.model, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
+            if(!result.empty() && !intersectionList.empty()){
+                auto lastIntersection = intersectionList.back();
+                intersectionList.push_back((Line){
+                    .startLinePoint = lastIntersection.endLinePoint,
+                    .endLinePoint = result.front().startLinePoint,
+                    .type = 2
+                });
+            }
+            intersectionList.insert(intersectionList.end(), result.begin(), result.end());
         }
 
-        int seg = 30;
+        xk = 0;
+        yk = 0;
+        zk = 0;
+        ak = 0;
+        bk = 0;
+        ck = 0;
+        sk = 1;
 
-        window.Print(models.Ret_Model(1).meshCount, 700, seg);
-        seg += 30;
-        for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
-            window.Print(i, 750, seg);
-            window.Print(models.Ret_Model(1).meshes[i].vertexCount, 850, seg);
-            window.Print(models.Ret_Model(1).meshes[i].triangleCount, 950, seg);
-            seg += 30;
-        }
+        // if(is_pressed){
+        //     is_pressed = 0;
+        //     ActiveModel = currentmodel;
+        // }
+
+        // int seg = 30;
+
+        // window.Print(models.Ret_Model(1).meshCount, 700, seg);
+        // seg += 30;
+        // for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
+        //     window.Print(i, 750, seg);
+        //     window.Print(models.Ret_Model(1).meshes[i].vertexCount, 850, seg);
+        //     window.Print(models.Ret_Model(1).meshes[i].triangleCount, 950, seg);
+        //     seg += 30;
+        // }
 
         BeginMode3D(camera);
 
