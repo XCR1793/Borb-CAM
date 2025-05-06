@@ -49,20 +49,9 @@ int main(){
 
     mesh models;
 
-    // Mesh cubeMesh = GenMeshCube(2.0f, 2.0f, 2.0f); // width, height, length
-    // Model cubeModel = LoadModelFromMesh(cubeMesh);
-
-    models.Add_Model(1, "src/monkey.obj");
+    models.Add_Model(1, "src/model.obj");
     models.Add_Model(2, "src/model.obj");
     models.Add_Model(3, "src/model.obj");
-
-    // Model model2 = models.Ret_Model(2);
-    // models.Position_Model(model2, (Vector3){5, 0, 0});
-    // models.Reu_Model(2, model2);
-
-    // Model model3 = models.Ret_Model(3);
-    // models.Position_Model(model3, (Vector3){-5, 0, 0});
-    // models.Reu_Model(3, model3);
 
     multimodel model2 = { .id = 2, .model = models.Ret_Model(2) };
     models.Position_Model(model2, (Vector3){5, 0, 0});
@@ -107,14 +96,6 @@ int main(){
         BeginDrawing();
         ClearBackground(DARKGRAY);
 
-        // Vector3 plane = models.RotXYD_XYZ((Vector3){0, a, b});
-        // Vector3 line_start = {x+10, y+10, z+10};
-        // Vector3 line_end   = {x-10, y-10, z-10};
-        // std::pair<Vector3, bool> intersection = models.IntersectLinePlane((Vector3){0, 1, 0}, (Vector3){10, 1, 5}, (Vector3){10, -1, 5});
-
-        // Model currentmodel = models.Ret_Model(1);
-        
-
         // auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         // if((epoch_seconds - prev_time >= 15)){
             // prev_time = epoch_seconds;
@@ -144,12 +125,7 @@ int main(){
         //     //         );
         //     //     }
         //     // }
-        //     o = 0;
         // }
-        
-        if(window.Ret_Button(17)){
-            o = 0.5;
-        }
 
         if(window.Ret_Button(1)){x = x + 0.5; xk = 0.5;}
         if(window.Ret_Button(2)){x = x - 0.5; xk = -0.5;}
@@ -168,16 +144,6 @@ int main(){
         if(window.Ret_Button(15)){slice_size = slice_size + 0.01f;}
         if(window.Ret_Button(16)){slice_size = slice_size - 0.01f;}
         if(slice_size <= 0){slice_size = 0.01f;}
-
-        // models.Rep_Model(1, (Vector3){x, y, z});
-
-        // models.Scale_Model(currentmodel, s);
-
-        // models.Rotate_Model(currentmodel, (Vector3){a, b, c});
-
-        // models.Position_Model(currentmodel, (Vector3){xk, yk, zk});
-
-        // models.Reu_Model(1, models.Apply_Transformations(currentmodel));
 
         multimodel currentmodel = { .id = 1, .model = models.Ret_Model(1) };
 
@@ -209,53 +175,11 @@ int main(){
         ak = 0;
         bk = 0;
         ck = 0;
-        sk = 1;
-
-        // if(is_pressed){
-        //     is_pressed = 0;
-        //     ActiveModel = currentmodel;
-        // }
-
-        // int seg = 30;
-
-        // window.Print(models.Ret_Model(1).meshCount, 700, seg);
-        // seg += 30;
-        // for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
-        //     window.Print(i, 750, seg);
-        //     window.Print(models.Ret_Model(1).meshes[i].vertexCount, 850, seg);
-        //     window.Print(models.Ret_Model(1).meshes[i].triangleCount, 950, seg);
-        //     seg += 30;
-        // }
+        sk = 1;        
 
         BeginMode3D(camera);
 
-        // std::vector<std::vector<std::pair<int, Triangle>>> triangle_list = models.List_Triangles(models.Ret_Model(1));
-        // for(auto it : triangle_list){
-        //     for(auto ti : it){
-        //         DrawTriangle3D(ti.second.Vertex1, ti.second.Vertex2, ti.second.Vertex3, BLUE);
-        //     }
-        // }
-
-
-
         o = models.Ret_Model(1).meshes[1].vertexCount;
-
-
-        // if(!intersectionList.empty()){
-        //     for(auto line : intersectionList){
-        //         if(line.type == 1){
-        //             if(line.meshNo == 0){
-        //                 if(line.islandNo == 0){DrawLine3D(line.startLinePos, line.endLinePos, BLUE);}
-        //                 if(line.islandNo == 1){DrawLine3D(line.startLinePos, line.endLinePos, RED);}
-        //             }
-        //             if(line.meshNo == 1){
-        //                 if(line.islandNo == 0){DrawLine3D(line.startLinePos, line.endLinePos, PURPLE);}
-        //                 if(line.islandNo == 1){DrawLine3D(line.startLinePos, line.endLinePos, GREEN);}
-        //             }
-        //         }
-        //         // if(line.type == 2){DrawLine3D(line.startLinePos, line.endLinePos, ORANGE);}
-        //     }
-        // }
 
         if (!intersectionList.empty()) {
             for (auto& line : intersectionList) {
@@ -271,158 +195,15 @@ int main(){
         
                     DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
                 }
-        
-                // Optional: type 2 lines
-                // if (line.type == 2) {
-                //     DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, ORANGE);
-                // }
             }
-        }
-        
-
-        // if (!intersectionList.empty()) {
-        //     // Simple function to generate a unique color based on mesh and island number
-        //     auto GenerateColor = [](int meshNo, int islandNo) -> Color {
-        //         int seed = meshNo * 73856093 ^ islandNo * 19349663; // Combine numbers uniquely
-        //         return (Color){
-        //             (unsigned char)(50 + (seed * 97) % 200),
-        //             (unsigned char)(50 + (seed * 53) % 200),
-        //             (unsigned char)(50 + (seed * 29) % 200),
-        //             255
-        //         };
-        //     };
-        
-        //     for (auto& line : intersectionList) {
-        //         if (line.type == 1) {
-        //             Color color = GenerateColor(line.meshNo, line.islandNo);
-        //             DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
-        //         }
-        
-        //         // Optional: type 2 lines if needed
-        //         // if (line.type == 2) {
-        //         //     DrawLine3D(line.startLinePos, line.endLinePos, ORANGE);
-        //         // }
-        //     }
-        // }
-        
-        
-        // const int NUM_ISLANDS = 2;
-        // const int NUM_GRADIENT_LINES = 5;
-        
-        // std::vector<std::vector<Line>> islandLines(NUM_ISLANDS);
-        
-        // // Group lines by islandNo only
-        // for (auto& line : intersectionList) {
-        //     if (line.type == 1 && line.islandNo < NUM_ISLANDS) {
-        //         islandLines[line.islandNo].push_back(line);
-        //     }
-        // }
-        
-        // // Draw per island
-        // for (int island = 0; island < NUM_ISLANDS; ++island) {
-        //     auto& lines = islandLines[island];
-        //     int count = lines.size();
-        
-        //     for (int i = 0; i < count; ++i) {
-        //         auto& line = lines[i];
-        //         Color color;
-        
-        //         // Apply stepped gradient only to last NUM_GRADIENT_LINES lines
-        //         int gradientStart = std::max(0, count - NUM_GRADIENT_LINES);
-        
-        //         if (i >= gradientStart) {
-        //             int stepIndex = i - gradientStart;
-        //             float t = (float)stepIndex / (NUM_GRADIENT_LINES - 1);
-        
-        //             // Red to Blue
-        //             color = {
-        //                 (unsigned char)(255 * (1.0f - t)),
-        //                 0,
-        //                 (unsigned char)(255 * t),
-        //                 255
-        //             };
-        //         } else {
-        //             color = WHITE; // Or any fallback/default color
-        //         }
-        
-        //         DrawLine3D(line.startLinePos, line.endLinePos, color);
-        //     }
-        // }
-        
-        
-
-// std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = models.Intersecting_Triangles(currentmodel, (Vector4){0,1,0,2});
-
-// // Helper lambda to generate a pseudo-random color based on index
-// auto GenerateUniqueColor = [](int index) -> Color {
-//     // Simple color cycling using modulus to stay within 0-255
-//     return (Color){
-//         (unsigned char)(50 + (index * 97) % 200),  // R
-//         (unsigned char)(50 + (index * 53) % 200),  // G
-//         (unsigned char)(50 + (index * 29) % 200),  // B
-//         255                                       // A
-//     };
-// };
-
-// int islandCounter = 0;
-
-// for (auto& perMesh : Triangle_List) {
-//     for (auto& perIsland : perMesh) {
-//         Color islandColor = GenerateUniqueColor(islandCounter++);
-
-//         for (auto& perTriangle : perIsland) {
-//             DrawLine3D(perTriangle.second.Vertex1, perTriangle.second.Vertex2, islandColor);
-//             DrawLine3D(perTriangle.second.Vertex2, perTriangle.second.Vertex3, islandColor);
-//             DrawLine3D(perTriangle.second.Vertex3, perTriangle.second.Vertex1, islandColor);
-//         }
-//     }
-// }
-
-
-// std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = models.Intersecting_Triangles(currentmodel, (Vector4){0,1,0,-0.5});
-
-// const int NUM_GRADIENT_TRIANGLES = 5;
-
-// int islandCounter = 0;
-
-// for (auto& perMesh : Triangle_List) {
-//     for (auto& perIsland : perMesh) {
-//         int count = perIsland.size();
-//         int gradientStart = std::max(0, count - NUM_GRADIENT_TRIANGLES);
-
-//         for (int i = 0; i < count; ++i) {
-//             auto& triangle = perIsland[i].second;
-
-//             Color color;
-
-//             if (i >= gradientStart) {
-//                 // Compute step index in gradient
-//                 int stepIndex = i - gradientStart;
-//                 float t = (float)stepIndex / (NUM_GRADIENT_TRIANGLES - 1);
-
-//                 color = {
-//                     (unsigned char)(255 * (1.0f - t)), // red fades
-//                     0,
-//                     (unsigned char)(255 * t),         // blue increases
-//                     255
-//                 };
-//             } else {
-//                 // Use unique color for non-gradient triangles
-//                 color = GenerateUniqueColor(islandCounter);
-//             }
-
-//             DrawLine3D(triangle.Vertex1, triangle.Vertex2, color);
-//             DrawLine3D(triangle.Vertex2, triangle.Vertex3, color);
-//             DrawLine3D(triangle.Vertex3, triangle.Vertex1, color);
-//         }
-
-//         islandCounter++;
-//     }
-// }
-
-
+        }        
 
         models.Run_Models();
+
+        BoundingBox bbox1 = GetMeshBoundingBox(currentmodel.model.meshes[0]);
+        DrawBoundingBox(bbox1, RED);
+        BoundingBox bbox2 = GetMeshBoundingBox(currentmodel.model.meshes[1]);
+        DrawBoundingBox(bbox2, RED);
 
         EndMode3D();
 
