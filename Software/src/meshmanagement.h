@@ -5,6 +5,7 @@
 #include <vector>
 #include <raylib.h>
 #include <raymath.h>
+#include <cfloat>
 
 struct multimodel{
     int id;
@@ -114,6 +115,10 @@ class mesh{
 
     // Pair 1(Line Type [1 = Surface, 2 = Movement]), Pair 2(Start line, End line)
     std::vector<Line> Intersect_Model(Model &model, Vector4 Coeff_abcd);
+
+    bool CheckCollisionPointBox(Vector3 point, BoundingBox box);
+
+    std::vector<Line> Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines);
 
     private:
 

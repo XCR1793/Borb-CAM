@@ -280,24 +280,24 @@ multimodel mesh::Apply_Transformations(multimodel &mmodel){
 std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model model){
     std::vector<std::vector<std::pair<int, Triangle>>> All_Triangles;
 
-    for (long i = 0; i < model.meshCount; i++){
+    for(long i = 0; i < model.meshCount; i++){
         std::vector<std::pair<int, Triangle>> Mesh_Triangles;
         float* vertices = model.meshes[i].vertices;
         float* normals = model.meshes[i].normals;
         long vertexCount = model.meshes[i].vertexCount;
 
-        for (long j = 0; j < vertexCount; j += 3){
+        for(long j = 0; j < vertexCount; j += 3){
             Vector3 v1 = {vertices[(j * 3) + 0], vertices[(j * 3) + 1], vertices[(j * 3) + 2]};
             Vector3 v2 = {vertices[(j * 3) + 3], vertices[(j * 3) + 4], vertices[(j * 3) + 5]};
             Vector3 v3 = {vertices[(j * 3) + 6], vertices[(j * 3) + 7], vertices[(j * 3) + 8]};
 
             Vector3 n1 = {}, n2 = {}, n3 = {};
 
-            if (normals != nullptr){
+            if(normals != nullptr){
                 n1 = {normals[(j * 3) + 0], normals[(j * 3) + 1], normals[(j * 3) + 2]};
                 n2 = {normals[(j * 3) + 3], normals[(j * 3) + 4], normals[(j * 3) + 5]};
                 n3 = {normals[(j * 3) + 6], normals[(j * 3) + 7], normals[(j * 3) + 8]};
-            } else {
+            }else{
                 // Fallback: compute face normal and assign it to all three points
                 Vector3 edge1 = Vector3Subtract(v2, v1);
                 Vector3 edge2 = Vector3Subtract(v3, v1);
@@ -320,99 +320,6 @@ std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model mo
     return All_Triangles;
 }
 
-
-// std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model model){
-//     std::vector<std::vector<std::pair<int, Triangle>>> All_Triangles;
-
-//     for (long i = 0; i < model.meshCount; i++){
-//         std::vector<std::pair<int, Triangle>> Mesh_Triangles;
-//         float* vertices = model.meshes[i].vertices;
-//         float* normals = model.meshes[i].normals;
-//         long vertexCount = model.meshes[i].vertexCount;
-
-//         for (long j = 0; j < vertexCount; j += 3){
-//             Vector3 v1 = {vertices[(j * 3) + 0], vertices[(j * 3) + 1], vertices[(j * 3) + 2]};
-//             Vector3 v2 = {vertices[(j * 3) + 3], vertices[(j * 3) + 4], vertices[(j * 3) + 5]};
-//             Vector3 v3 = {vertices[(j * 3) + 6], vertices[(j * 3) + 7], vertices[(j * 3) + 8]};
-
-//             Vector3 n1 = {normals[(j * 3) + 0], normals[(j * 3) + 1], normals[(j * 3) + 2]};
-//             Vector3 n2 = {normals[(j * 3) + 3], normals[(j * 3) + 4], normals[(j * 3) + 5]};
-//             Vector3 n3 = {normals[(j * 3) + 6], normals[(j * 3) + 7], normals[(j * 3) + 8]};
-
-//             Triangle tri = {
-//                 .Vertex1 = {v1, n1},
-//                 .Vertex2 = {v2, n2},
-//                 .Vertex3 = {v3, n3}
-//             };
-
-//             Mesh_Triangles.emplace_back(i, tri);
-//         }
-
-//         All_Triangles.push_back(Mesh_Triangles);
-//     }
-
-//     return All_Triangles;
-// }
-
-
-// std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model model){
-//     std::vector<std::vector<std::pair<int, Triangle>>> All_Triangles;
-
-//     for (long i = 0; i < model.meshCount; i++){
-//         std::vector<std::pair<int, Triangle>> Mesh_Triangles;
-//         float* vertices = model.meshes[i].vertices;
-//         long vertexCount = model.meshes[i].vertexCount;
-
-//         for (long j = 0; j < vertexCount; j += 3){
-//             Vector3 v1 = {vertices[(j * 3) + 0], vertices[(j * 3) + 1], vertices[(j * 3) + 2]};
-//             Vector3 v2 = {vertices[(j * 3) + 3], vertices[(j * 3) + 4], vertices[(j * 3) + 5]};
-//             Vector3 v3 = {vertices[(j * 3) + 6], vertices[(j * 3) + 7], vertices[(j * 3) + 8]};
-
-//             // Calculate normal from cross product of two triangle edges
-//             Vector3 edge1 = Vector3Subtract(v2, v1);
-//             Vector3 edge2 = Vector3Subtract(v3, v1);
-//             Vector3 normal = Vector3Normalize(Vector3CrossProduct(edge1, edge2));
-
-//             Triangle tri = {
-//                 .Vertex1 = {v1, normal},
-//                 .Vertex2 = {v2, normal},
-//                 .Vertex3 = {v3, normal}
-//             };
-
-//             Mesh_Triangles.emplace_back(i, tri);
-//         }
-
-//         All_Triangles.push_back(Mesh_Triangles);
-//     }
-
-//     return All_Triangles;
-// }
-
-
-// std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model model){
-//     std::vector<std::vector<std::pair<int, Triangle>>> All_Triangles;
-
-//     for (long i = 0; i < model.meshCount; i++){
-//         std::vector<std::pair<int, Triangle>> Mesh_Triangles;
-//         float* vertices = model.meshes[i].vertices;
-//         long vertexCount = model.meshes[i].vertexCount;
-
-//         for (long j = 0; j < vertexCount; j += 3){
-//             Triangle tri = {
-//                 (Vector3){vertices[(j * 3) + 0], vertices[(j * 3) + 1], vertices[(j * 3) + 2]},
-//                 (Vector3){vertices[(j * 3) + 3], vertices[(j * 3) + 4], vertices[(j * 3) + 5]},
-//                 (Vector3){vertices[(j * 3) + 6], vertices[(j * 3) + 7], vertices[(j * 3) + 8]},
-//             };
-
-//             Mesh_Triangles.emplace_back(i, tri);
-//         }
-
-//         All_Triangles.push_back(Mesh_Triangles);
-//     }
-
-//     return All_Triangles;
-// }
-
 int mesh::Triangle_Touching(Triangle first, Triangle second){
     int i = 0;
 
@@ -431,42 +338,22 @@ int mesh::Triangle_Touching(Triangle first, Triangle second){
     return i;
 }
 
-
-// int mesh::Triangle_Touching(Triangle first, Triangle second){
-//     int i = 0;
-
-//     if( (first.Vertex1 == second.Vertex1) || 
-//         (first.Vertex1 == second.Vertex2) || 
-//         (first.Vertex1 == second.Vertex3)) i++;
-
-//     if( (first.Vertex2 == second.Vertex1) || 
-//         (first.Vertex2 == second.Vertex2) || 
-//         (first.Vertex2 == second.Vertex3)) i++;
-
-//     if( (first.Vertex3 == second.Vertex1) || 
-//         (first.Vertex3 == second.Vertex2) || 
-//         (first.Vertex3 == second.Vertex3)) i++;
-
-//     return i;
-// }
-
-
 std::vector<std::pair<int, Triangle>> mesh::Sort_Triangles(std::vector<std::pair<int, Triangle>> Unsorted_Triangles) {
     std::vector<std::pair<int, Triangle>> Sorted;
 
-    if (Unsorted_Triangles.empty()) return Sorted;
+    if(Unsorted_Triangles.empty()){return Sorted;}
 
     // Start with the first triangle
     Sorted.push_back(Unsorted_Triangles[0]);
     Unsorted_Triangles.erase(Unsorted_Triangles.begin());
 
-    while (!Unsorted_Triangles.empty()) {
+    while(!Unsorted_Triangles.empty()){
         int maxTouching = -1;
         size_t bestIndex = 0;
 
-        for (size_t i = 0; i < Unsorted_Triangles.size(); ++i) {
+        for(size_t i = 0; i < Unsorted_Triangles.size(); ++i){
             int touching = Triangle_Touching(Sorted.back().second, Unsorted_Triangles[i].second);
-            if (touching > maxTouching) {
+            if(touching > maxTouching){
                 maxTouching = touching;
                 bestIndex = i;
             }
@@ -618,6 +505,51 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
 
 //     return Lines;
 // }
+
+bool mesh::CheckCollisionPointBox(Vector3 point, BoundingBox box){
+    return (point.x >= box.min.x && point.x <= box.max.x) &&
+           (point.y >= box.min.y && point.y <= box.max.y) &&
+           (point.z >= box.min.z && point.z <= box.max.z);
+}
+
+std::vector<Line> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line> &lines){
+    std::vector<Line> result;
+
+    for(int i = 0; i < lines.size(); i++){
+        Vector3 a = lines[i].startLinePoint.Position;
+        Vector3 b = lines[i].endLinePoint.Position;
+
+        bool aInside = CheckCollisionPointBox(a, box);
+        bool bInside = CheckCollisionPointBox(b, box);
+
+        if(!aInside && !bInside){
+            result.push_back(lines[i]);
+        }else if(aInside && bInside){
+            continue;
+        }else{
+            Vector3 outside = aInside ? b : a;
+            Vector3 inside  = aInside ? a : b;
+            Vector3 dir     = Vector3Normalize(Vector3Subtract(inside, outside));
+
+            Vector3 intersection;
+            if(RayIntersectsAABB(outside, dir, box, &intersection)){
+                Line clipped = lines[i];
+                if(aInside){
+                    clipped.startLinePoint.Position = intersection;
+                    clipped.endLinePoint.Position   = b;
+                }else{
+                    clipped.startLinePoint.Position = a;
+                    clipped.endLinePoint.Position   = intersection;
+                }
+                result.push_back(clipped);
+            }
+        }
+    }
+
+    return result;
+}
+
+
 
 
 /**##########################################

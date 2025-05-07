@@ -253,50 +253,80 @@ int main(){
         //     }
         // }
         
+        // if (!intersectionList.empty()) {
+        //     for (auto& line : intersectionList) {
+        //         if (line.type == 1) {
+        //             int meshIndex = line.meshNo;
         
-        // float maxDistance = 5.0f; // Max range to check for bounding box intersection
+        //             // Get the bounding box of the corresponding mesh
+        //             BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[meshIndex]);
+        //             DrawBoundingBox(bbox, Fade(WHITE, 0.25f)); // Visualize bounding box
+        
+        //             // Ray start and REVERSED direction (inward)
+        //             Vector3 rayOrigin = line.startLinePoint.Position;
+        //             Vector3 rayDirection = Vector3Negate(Vector3Normalize(line.startLinePoint.Normal)); // Reversed normal
+        
+        //             // Skip invalid directions
+        //             if (Vector3Length(rayDirection) < 0.0001f) continue;
+        
+        //             Vector3 hitPoint;
+        //             bool hit = models.RayIntersectsAABB(rayOrigin, rayDirection, bbox, &hitPoint);
+        
+        //             if (hit) {
+        //                 // Visualize the reversed normal with color
+        //                 Color color = {
+        //                     (unsigned char)((rayDirection.x * 0.5f + 0.5f) * 255),
+        //                     (unsigned char)((rayDirection.y * 0.5f + 0.5f) * 255),
+        //                     (unsigned char)((rayDirection.z * 0.5f + 0.5f) * 255),
+        //                     255
+        //                 };
+        
+        //                 DrawSphere(rayOrigin, 0.01f, BLUE);  // Ray origin
+        //                 DrawSphere(hitPoint, 0.01f, RED);    // Ray hit
+        //                 DrawLine3D(rayOrigin, hitPoint, color);
+        //             }
+        //         }
+        //     }
+        // }
 
-        if (!intersectionList.empty()) {
-            for (auto& line : intersectionList) {
+        
+        // --- Define AABB for culling box (Y: 0 to -4, size: 4x4x4) ---
+        BoundingBox cullBox = {
+            .min = Vector3{-2.0f, -4.0f, -2.0f},
+            .max = Vector3{ 2.0f,  0.0f,  2.0f}
+        };
+
+        // --- Use AABB-based culling function ---
+        std::vector<Line> culledLines = models.Cull_Lines_ByBox(cullBox, intersectionList);
+
+        // --- Draw the culled lines ---
+        if (!culledLines.empty()) {
+            for (auto& line : culledLines) {
                 if (line.type == 1) {
-                    int meshIndex = line.meshNo;
-        
-                    // Get the bounding box of the corresponding mesh
-                    BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[meshIndex]);
-                    DrawBoundingBox(bbox, Fade(WHITE, 0.25f)); // Visualize bounding box
-        
-                    // Ray start and REVERSED direction (inward)
-                    Vector3 rayOrigin = line.startLinePoint.Position;
-                    Vector3 rayDirection = Vector3Negate(Vector3Normalize(line.startLinePoint.Normal)); // Reversed normal
-        
-                    // Skip invalid directions
-                    if (Vector3Length(rayDirection) < 0.0001f) continue;
-        
-                    Vector3 hitPoint;
-                    bool hit = models.RayIntersectsAABB(rayOrigin, rayDirection, bbox, &hitPoint);
-        
-                    if (hit) {
-                        // Visualize the reversed normal with color
-                        Color color = {
-                            (unsigned char)((rayDirection.x * 0.5f + 0.5f) * 255),
-                            (unsigned char)((rayDirection.y * 0.5f + 0.5f) * 255),
-                            (unsigned char)((rayDirection.z * 0.5f + 0.5f) * 255),
-                            255
-                        };
-        
-                        DrawSphere(rayOrigin, 0.01f, BLUE);  // Ray origin
-                        DrawSphere(hitPoint, 0.01f, RED);    // Ray hit
-                        DrawLine3D(rayOrigin, hitPoint, color);
-                    }
+                    Vector3 normal = line.startLinePoint.Normal;
+                
+                    Color color = {
+                        (unsigned char)((normal.x * 0.5f + 0.5f) * 255),
+                        (unsigned char)((normal.y * 0.5f + 0.5f) * 255),
+                        (unsigned char)((normal.z * 0.5f + 0.5f) * 255),
+                        255
+                    };
+                
+                    DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
                 }
             }
         }
-        
-        
-        
+
+        // --- Draw transparent culling box for debugging ---
+        Color transparentColor = { 255, 0, 0, 51 };  // 20% opacity red
+        Color wireColor = { 255, 0, 0, 255 };        // Full red for outline
+
+        DrawCube({0.0f, -2.0f, 0.0f}, 4.0f, 4.0f, 4.0f, transparentColor);  // Solid cube
+        DrawBoundingBox(cullBox, wireColor);                                // Wireframe box
+
         
 
-        models.Run_Models();
+        // models.Run_Models();
 
         // BoundingBox bbox1 = GetMeshBoundingBox(currentmodel.model.meshes[0]);
         // DrawBoundingBox(bbox1, RED);
