@@ -79,6 +79,11 @@ class mesh{
 
     std::pair<Triangle, bool> IntersectTrianglePlane(Vector4 planeNormal, Triangle triangle);
 
+    Vector3 MovePointAlongNormal3D(Vector3 startPoint, Vector3 normal, float distance);
+    
+    bool RayIntersectsAABB(Vector3 rayOrigin, Vector3 rayDir, BoundingBox box, Vector3* out);
+    
+
     /**
      * Add point to point, to line equation
      * Add Line to Plane Intersection 3D Point equation
@@ -89,14 +94,6 @@ class mesh{
     /**##########################################
      * #       Mesh Manipulation Functions      #
      * ##########################################*/
-
-    // Model Scale_Model(Model &model, float scale);
-
-    // Model Position_Model(Model &model, Vector3 position);
-
-    // Model Rotate_Model(Model &model, Vector3 rotatiton);
-
-    // Model Apply_Transformations(Model &model);
 
     multimodel Scale_Model(multimodel &model, float scale);
 

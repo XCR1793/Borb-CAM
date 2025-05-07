@@ -181,29 +181,127 @@ int main(){
 
         o = models.Ret_Model(1).meshes[1].vertexCount;
 
+        // if (!intersectionList.empty()) {
+        //     for (auto& line : intersectionList) {
+        //         if (line.type == 1) {
+        //             Vector3 normal = line.startLinePoint.Normal;
+        
+        //             Color color = {
+        //                 (unsigned char)((normal.x * 0.5f + 0.5f) * 255), // Red = X axis
+        //                 (unsigned char)((normal.y * 0.5f + 0.5f) * 255), // Green = Y axis
+        //                 (unsigned char)((normal.z * 0.5f + 0.5f) * 255), // Blue = Z axis
+        //                 255
+        //             };
+        
+        //             DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
+        //         }
+        //     }
+        // }        
+
+                        // Edge Offset
+        // float offsetDistance = 0.05f; // adjust as needed
+
+        // if (!intersectionList.empty()) {
+        //     for (auto& line : intersectionList) {
+        //         if (line.type == 1) {
+        //             // Offset both start and end points along their normals
+        //             Vector3 startOffset = MovePointAlongNormal3D(line.startLinePoint.Position, line.startLinePoint.Normal, offsetDistance);
+        //             Vector3 endOffset = MovePointAlongNormal3D(line.endLinePoint.Position, line.endLinePoint.Normal, offsetDistance);
+        
+        //             // Color based on the start point normal
+        //             Vector3 normal = Vector3Normalize(line.startLinePoint.Normal); // Ensure unit length
+        //             Color color = {
+        //                 (unsigned char)((normal.x * 0.5f + 0.5f) * 255), // Red = X
+        //                 (unsigned char)((normal.y * 0.5f + 0.5f) * 255), // Green = Y
+        //                 (unsigned char)((normal.z * 0.5f + 0.5f) * 255), // Blue = Z
+        //                 255
+        //             };
+        
+        //             DrawLine3D(startOffset, endOffset, color);
+        //         }
+        //     }
+        // }
+
+        // float debugLineLength = 1.0f; // adjust as needed
+
+        // if (!intersectionList.empty()) {
+        //     for (auto& line : intersectionList) {
+        //         if (line.type == 1) {
+        //             Vector3 start = line.startLinePoint.Position;
+        //             Vector3 normal = Vector3Normalize(line.startLinePoint.Normal);
+        
+        //             // Skip if normal is zero-length
+        //             if (Vector3Length(normal) < 0.0001f) continue;
+        
+        //             Vector3 end = Vector3Add(start, Vector3Scale(normal, debugLineLength));
+        
+        //             // Visualize normal direction
+        //             Color color = {
+        //                 (unsigned char)((normal.x * 0.5f + 0.5f) * 255),
+        //                 (unsigned char)((normal.y * 0.5f + 0.5f) * 255),
+        //                 (unsigned char)((normal.z * 0.5f + 0.5f) * 255),
+        //                 255
+        //             };
+        
+        //             // Optional: mark start and end with spheres
+        //             DrawSphere(start, 0.01f, BLUE); // Start point
+        //             DrawSphere(end, 0.01f, RED);    // End point
+        
+        //             // Draw the normal line
+        //             DrawLine3D(start, end, color);
+        //         }
+        //     }
+        // }
+        
+        
+        // float maxDistance = 5.0f; // Max range to check for bounding box intersection
+
         if (!intersectionList.empty()) {
             for (auto& line : intersectionList) {
                 if (line.type == 1) {
-                    Vector3 normal = line.startLinePoint.Normal;
+                    int meshIndex = line.meshNo;
         
-                    Color color = {
-                        (unsigned char)((normal.x * 0.5f + 0.5f) * 255), // Red = X axis
-                        (unsigned char)((normal.y * 0.5f + 0.5f) * 255), // Green = Y axis
-                        (unsigned char)((normal.z * 0.5f + 0.5f) * 255), // Blue = Z axis
-                        255
-                    };
+                    // Get the bounding box of the corresponding mesh
+                    BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[meshIndex]);
+                    DrawBoundingBox(bbox, Fade(WHITE, 0.25f)); // Visualize bounding box
         
-                    DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
+                    // Ray start and REVERSED direction (inward)
+                    Vector3 rayOrigin = line.startLinePoint.Position;
+                    Vector3 rayDirection = Vector3Negate(Vector3Normalize(line.startLinePoint.Normal)); // Reversed normal
+        
+                    // Skip invalid directions
+                    if (Vector3Length(rayDirection) < 0.0001f) continue;
+        
+                    Vector3 hitPoint;
+                    bool hit = models.RayIntersectsAABB(rayOrigin, rayDirection, bbox, &hitPoint);
+        
+                    if (hit) {
+                        // Visualize the reversed normal with color
+                        Color color = {
+                            (unsigned char)((rayDirection.x * 0.5f + 0.5f) * 255),
+                            (unsigned char)((rayDirection.y * 0.5f + 0.5f) * 255),
+                            (unsigned char)((rayDirection.z * 0.5f + 0.5f) * 255),
+                            255
+                        };
+        
+                        DrawSphere(rayOrigin, 0.01f, BLUE);  // Ray origin
+                        DrawSphere(hitPoint, 0.01f, RED);    // Ray hit
+                        DrawLine3D(rayOrigin, hitPoint, color);
+                    }
                 }
             }
-        }        
+        }
+        
+        
+        
+        
 
         models.Run_Models();
 
-        BoundingBox bbox1 = GetMeshBoundingBox(currentmodel.model.meshes[0]);
-        DrawBoundingBox(bbox1, RED);
-        BoundingBox bbox2 = GetMeshBoundingBox(currentmodel.model.meshes[1]);
-        DrawBoundingBox(bbox2, RED);
+        // BoundingBox bbox1 = GetMeshBoundingBox(currentmodel.model.meshes[0]);
+        // DrawBoundingBox(bbox1, RED);
+        // BoundingBox bbox2 = GetMeshBoundingBox(currentmodel.model.meshes[1]);
+        // DrawBoundingBox(bbox2, RED);
 
         EndMode3D();
 

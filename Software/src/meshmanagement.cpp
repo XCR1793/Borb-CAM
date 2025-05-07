@@ -147,53 +147,6 @@ std::pair<Point, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Point lineS
     return {{.Position = intersection, .Normal = interpolatedNormal}, true};
 }
 
-
-// std::pair<Point, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Point lineStart, Point lineEnd) {
-//     Vector3 lineDir = Vector3Subtract(lineEnd.Position, lineStart.Position);  // Direction of the line
-//     Vector3 normal = { planeNormal.x, planeNormal.y, planeNormal.z };  // Extract plane normal (a, b, c)
-//     float denom = Vector3DotProduct(normal, lineDir);  // Dot product between plane normal and line direction
-
-//     if (fabsf(denom) < 1e-6f) {
-//         // Line is parallel to the plane
-//         return { {}, false };
-//     }
-
-//     float numerator = planeNormal.w - Vector3DotProduct(normal, lineStart.Position);
-//     float t = numerator / denom;
-
-//     if (t < 0.0f || t > 1.0f) {
-//         // Intersection is outside the segment
-//         return { {}, false };
-//     }
-
-//     Vector3 intersection = Vector3Add(lineStart.Position, Vector3Scale(lineDir, t));
-//     return { { .Position = intersection, .Normal = {} }, true };
-// }
-
-
-// std::pair<Vector3, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Vector3 lineStart, Vector3 lineEnd) {
-//     Vector3 lineDir = Vector3Subtract(lineEnd, lineStart);  // Direction of the line
-//     Vector3 normal = { planeNormal.x, planeNormal.y, planeNormal.z };  // Extract plane normal (a, b, c)
-//     float denom = Vector3DotProduct(normal, lineDir);  // Dot product between plane normal and line direction
-
-//     if (fabsf(denom) < 1e-6f) {
-//         // Line is parallel to the plane
-//         return { Vector3Zero(), false };
-//     }
-
-//     // Compute t using the plane equation ax + by + cz = d
-//     float numerator = planeNormal.w - Vector3DotProduct(normal, lineStart);
-//     float t = numerator / denom;
-
-//     if (t < 0.0f || t > 1.0f) {
-//         // Intersection is outside the segment
-//         return { Vector3Zero(), false };
-//     }
-
-//     Vector3 intersection = Vector3Add(lineStart, Vector3Scale(lineDir, t));
-//     return { intersection, true };
-// }
-
 std::pair<Triangle, bool> mesh::IntersectTrianglePlane(Vector4 planeNormal, Triangle triangle){
     std::pair<Triangle, bool> Intersecting = {triangle, 0};
     if(IntersectLinePlane(planeNormal, triangle.Vertex1, triangle.Vertex2).second){Intersecting.second = 1;}
@@ -202,11 +155,58 @@ std::pair<Triangle, bool> mesh::IntersectTrianglePlane(Vector4 planeNormal, Tria
     return Intersecting;
 }
 
+Vector3 mesh::MovePointAlongNormal3D(Vector3 startPoint, Vector3 normal, float distance){
+    Vector3 unitNormal = Vector3Normalize(normal);
+    Vector3 offset = Vector3Scale(unitNormal, distance);
+    Vector3 newPoint = Vector3Add(startPoint, offset);
+    return newPoint;
+}
+
+bool mesh::RayIntersectsAABB(Vector3 rayOrigin, Vector3 rayDir, BoundingBox box, Vector3* out){
+    float tmin = -INFINITY;
+    float tmax = INFINITY;
+
+    if(fabs(rayDir.x) > 0.0001f){
+        float tx1 = (box.min.x - rayOrigin.x) / rayDir.x;
+        float tx2 = (box.max.x - rayOrigin.x) / rayDir.x;
+        tmin = fmaxf(tmin, fminf(tx1, tx2));
+        tmax = fminf(tmax, fmaxf(tx1, tx2));
+    }else if(rayOrigin.x < box.min.x || rayOrigin.x > box.max.x){
+        return false;
+    }
+
+    if(fabs(rayDir.y) > 0.0001f){
+        float ty1 = (box.min.y - rayOrigin.y) / rayDir.y;
+        float ty2 = (box.max.y - rayOrigin.y) / rayDir.y;
+        tmin = fmaxf(tmin, fminf(ty1, ty2));
+        tmax = fminf(tmax, fmaxf(ty1, ty2));
+    }else if(rayOrigin.y < box.min.y || rayOrigin.y > box.max.y){
+        return false;
+    }
+
+    if(fabs(rayDir.z) > 0.0001f){
+        float tz1 = (box.min.z - rayOrigin.z) / rayDir.z;
+        float tz2 = (box.max.z - rayOrigin.z) / rayDir.z;
+        tmin = fmaxf(tmin, fminf(tz1, tz2));
+        tmax = fminf(tmax, fmaxf(tz1, tz2));
+    }else if(rayOrigin.z < box.min.z || rayOrigin.z > box.max.z){
+        return false;
+    }
+
+    if(tmax >= fmaxf(tmin, 0.0f)){
+        if (out) *out = Vector3Add(rayOrigin, Vector3Scale(rayDir, tmin));
+        return true;
+    }
+
+    return false;
+}
+
+
 /**##########################################
  * #       Mesh Manipulation Functions      #
  * ##########################################*/
 
- multimodel mesh::Scale_Model(multimodel &mmodel, float scale){
+multimodel mesh::Scale_Model(multimodel &mmodel, float scale){
     mmodel.scale = scale;
     Matrix scaleMat = MatrixScale(scale, scale, scale);
     mmodel.model.transform = MatrixMultiply(scaleMat, mmodel.model.transform);
