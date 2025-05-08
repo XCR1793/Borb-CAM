@@ -1,0 +1,4 @@
+Possible Settings
+Angle Order (ABC, ACB, CAB, etc)
+Slicing Angles (A and B)
+Slicing Distance (Gap between slices)
