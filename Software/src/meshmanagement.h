@@ -83,7 +83,6 @@ class mesh{
     Vector3 MovePointAlongNormal3D(Vector3 startPoint, Vector3 normal, float distance);
     
     bool RayIntersectsAABB(Vector3 rayOrigin, Vector3 rayDir, BoundingBox box, Vector3* out);
-    
 
     /**
      * Add point to point, to line equation
@@ -119,6 +118,14 @@ class mesh{
     bool CheckCollisionPointBox(Vector3 point, BoundingBox box);
 
     std::vector<Line> Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines);
+
+    // Everything below here currently doesnt work (Trim function doesnt work properly)
+    bool IsPointInsideMesh(Vector3 point, const std::vector<Triangle>& triangles);
+
+    std::vector<Triangle> Flatten_Triangles_Excluding(Model model, int excludeMesh);
+
+    std::vector<Line> Trim_Lines_ByModel(Model model, const std::vector<Line> &lines);
+    // Everything above here currently doesnt work (Trim function doesnt work properly)
 
     private:
 

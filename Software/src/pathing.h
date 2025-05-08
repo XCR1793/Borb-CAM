@@ -20,6 +20,8 @@ class path{
 
     bool Write_File_Last(const std::string& fileName, const std::string& extension, const std::string& content);
 
+    void Reset_N();
+
     bool Default_File(const std::string& fileName, const std::string& extension);
 
     bool Clear_File();
@@ -92,6 +94,7 @@ class path{
     private:
     std::string default_file_path;
     long line = 0;
+    int n_line_counter = 1;
 };
 
 #endif

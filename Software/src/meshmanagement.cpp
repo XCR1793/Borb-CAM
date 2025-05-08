@@ -117,14 +117,30 @@ Vector3 mesh::Deg_Rad(Vector3 angles){
     return ((Vector3){Deg_Rad(angles.x), Deg_Rad(angles.y), Deg_Rad(angles.z)});
 }
 
+// Vector3 mesh::NormalToRotation(Vector3 normal){
+//     normal = Vector3Normalize(normal);
+//     float pitch = asinf(-normal.y);
+//     float yaw = atan2f(normal.x, normal.z);
+//     pitch = pitch * (180.0f / PI);
+//     yaw = yaw * (180.0f / PI);
+//     return (Vector3){ pitch, yaw, 0.0f };
+// }
+
 Vector3 mesh::NormalToRotation(Vector3 normal){
     normal = Vector3Normalize(normal);
-    float pitch = asinf(-normal.y);
+    
+    // Optional: Flip if normals are reversed
+    // normal = Vector3Negate(normal);
+
+    float pitch = asinf(normal.y);  // Up is positive pitch
     float yaw = atan2f(normal.x, normal.z);
-    pitch = pitch * (180.0f / PI);
-    yaw = yaw * (180.0f / PI);
+
+    pitch *= RAD2DEG;
+    yaw   *= RAD2DEG;
+
     return (Vector3){ pitch, yaw, 0.0f };
 }
+
 
 std::pair<Point, bool> mesh::IntersectLinePlane(Vector4 planeNormal, Point lineStart, Point lineEnd){
     Vector3 lineDir = Vector3Subtract(lineEnd.Position, lineStart.Position);
@@ -459,53 +475,6 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
     return Lines;
 }
 
-
-// std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
-//     std::vector<Line> Lines;
-//     std::vector<std::vector<std::vector<std::pair<int, Triangle>>>> Triangle_List = Intersecting_Triangles(model, Coeff_abcd);
-
-//     int meshNo = 0;
-//     int island = 0;
-
-//     for(auto &perMesh : Triangle_List){
-//         island = 0;
-//         for(auto &perIsland : perMesh){
-//             for (auto &perTriangle : perIsland){
-//                 Triangle tri = perTriangle.second;
-                
-//                 // Store all edge intersections for this triangle
-//                 std::vector<Vector3> intersections;
-
-//                 std::pair<Vector3, bool> i1 = IntersectLinePlane(Coeff_abcd, tri.Vertex1, tri.Vertex3); // Edge 1-3
-//                 std::pair<Vector3, bool> i2 = IntersectLinePlane(Coeff_abcd, tri.Vertex2, tri.Vertex1); // Edge 2-1
-//                 std::pair<Vector3, bool> i3 = IntersectLinePlane(Coeff_abcd, tri.Vertex3, tri.Vertex2); // Edge 3-2
-
-//                 if(i1.second)intersections.push_back(i1.first);
-//                 if(i2.second)intersections.push_back(i2.first);
-//                 if(i3.second)intersections.push_back(i3.first);
-
-//                 if(intersections.size() == 2){
-//                     // Form a line from the two points
-//                     Lines.push_back((Line){
-//                         .startLinePos = intersections[0],
-//                         .startLineRot = {},
-//                         .endLinePos = intersections[1],
-//                         .endLineRot = {},
-//                         .type = 1,
-//                         .meshNo = meshNo,
-//                         .islandNo = island
-//                     });
-//                 }
-//                 // If 3 or more intersections, something is wrong (shouldn't happen for a triangle)
-//             }
-//             island++;
-//         }
-//         meshNo++;
-//     }
-
-//     return Lines;
-// }
-
 bool mesh::CheckCollisionPointBox(Vector3 point, BoundingBox box){
     return (point.x >= box.min.x && point.x <= box.max.x) &&
            (point.y >= box.min.y && point.y <= box.max.y) &&
@@ -549,6 +518,142 @@ std::vector<Line> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line
     return result;
 }
 
+bool mesh::IsPointInsideMesh(Vector3 point, const std::vector<Triangle>& triangles){
+    Vector3 rayDir = {1.0f, 0.123f, 0.456f}; // Skewed to avoid edge cases
+    int hitCount = 0;
+
+    for(const Triangle& tri : triangles){
+        Vector3 v0 = tri.Vertex1.Position;
+        Vector3 v1 = tri.Vertex2.Position;
+        Vector3 v2 = tri.Vertex3.Position;
+
+        Vector3 e1 = Vector3Subtract(v1, v0);
+        Vector3 e2 = Vector3Subtract(v2, v0);
+        Vector3 h  = Vector3CrossProduct(rayDir, e2);
+        float a    = Vector3DotProduct(e1, h);
+
+        if(fabs(a) < 0.00001f) continue;
+
+        float f = 1.0f / a;
+        Vector3 s = Vector3Subtract(point, v0);
+        float u = f * Vector3DotProduct(s, h);
+        if(u < 0.0f || u > 1.0f) continue;
+
+        Vector3 q = Vector3CrossProduct(s, e1);
+        float v = f * Vector3DotProduct(rayDir, q);
+        if(v < 0.0f || u + v > 1.0f) continue;
+
+        float t = f * Vector3DotProduct(e2, q);
+        if(t > 0.0001f) hitCount++;
+    }
+
+    return (hitCount % 2) == 1;
+}
+
+std::vector<Triangle> mesh::Flatten_Triangles_Excluding(Model model, int excludeMesh){
+    std::vector<Triangle> result;
+    std::vector<std::vector<std::pair<int, Triangle>>> tris = List_Triangles(model);
+
+    for(int i = 0; i < tris.size(); i++){
+        if(i == excludeMesh) continue;
+        for(auto &pair : tris[i]){
+            result.push_back(pair.second);
+        }
+    }
+
+    return result;
+}
+
+std::vector<Line> mesh::Trim_Lines_ByModel(Model model, const std::vector<Line> &lines){
+    std::vector<Line> result;
+
+    std::vector<Triangle> triangles;
+    std::vector<std::vector<std::pair<int, Triangle>>> tris = List_Triangles(model);
+    for(auto &meshTris : tris){
+        for(auto &pair : meshTris){
+            triangles.push_back(pair.second);
+        }
+    }
+
+    for(const Line &line : lines){
+        Vector3 a = line.startLinePoint.Position;
+        Vector3 b = line.endLinePoint.Position;
+
+        bool aInside = IsPointInsideMesh(a, triangles);
+        bool bInside = IsPointInsideMesh(b, triangles);
+
+        if(!aInside && !bInside){
+            result.push_back(line);
+            continue;
+        }
+
+        if(aInside && bInside){
+            continue;
+        }
+
+        Vector3 outside = aInside ? b : a;
+        Vector3 inside  = aInside ? a : b;
+        Vector3 dir     = Vector3Normalize(Vector3Subtract(inside, outside));
+
+        float closestDist = FLT_MAX;
+        Point hitPoint = {};
+
+        for(const Triangle &tri : triangles){
+            Vector3 edge1 = Vector3Subtract(tri.Vertex2.Position, tri.Vertex1.Position);
+            Vector3 edge2 = Vector3Subtract(tri.Vertex3.Position, tri.Vertex1.Position);
+            Vector3 normal = Vector3Normalize(Vector3CrossProduct(edge1, edge2));
+
+            float d = Vector3DotProduct(normal, tri.Vertex1.Position);
+
+            std::pair<Point, bool> intersect = IntersectLinePlane(
+                (Vector4){ normal.x, normal.y, normal.z, d },
+                { outside, {} },
+                { inside,  {} }
+            );
+
+            if(!intersect.second){continue;}
+
+            Vector3 v0 = edge1;
+            Vector3 v1 = edge2;
+            Vector3 v2 = Vector3Subtract(intersect.first.Position, tri.Vertex1.Position);
+
+            float d00 = Vector3DotProduct(v0, v0);
+            float d01 = Vector3DotProduct(v0, v1);
+            float d11 = Vector3DotProduct(v1, v1);
+            float d20 = Vector3DotProduct(v2, v0);
+            float d21 = Vector3DotProduct(v2, v1);
+
+            float denom = d00 * d11 - d01 * d01;
+            if(denom == 0){continue;}
+
+            float v = (d11 * d20 - d01 * d21) / denom;
+            float w = (d00 * d21 - d01 * d20) / denom;
+            float u = 1.0f - v - w;
+
+            if(u >= 0.0f && v >= 0.0f && w >= 0.0f){
+                float dist = Vector3LengthSqr(Vector3Subtract(intersect.first.Position, outside));
+                if(dist < closestDist){
+                    closestDist = dist;
+                    hitPoint = intersect.first;
+                }
+            }
+        }
+
+        if(closestDist < FLT_MAX){
+            Line trimmed = line;
+            if(aInside){
+                trimmed.startLinePoint = hitPoint;
+                trimmed.endLinePoint   = line.endLinePoint;
+            }else{
+                trimmed.startLinePoint = line.startLinePoint;
+                trimmed.endLinePoint   = hitPoint;
+            }
+            result.push_back(trimmed);
+        }
+    }
+
+    return result;
+}
 
 
 

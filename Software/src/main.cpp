@@ -3,343 +3,291 @@
 #include <chrono>
 #include <vector>
 #include <string>
+#include <sys/stat.h>
 #include <raylib.h>
 #include <raymath.h>
+
 #include "appmanagement.h"
 #include "meshmanagement.h"
 #include "pathing.h"
 #include "slice.h"
 
 #ifndef RAYGUI_IMPLEMENTATION
-    #define RAYGUI_IMPLEMENTATION
-    #include <raygui.h>
+#define RAYGUI_IMPLEMENTATION
+#include <raygui.h>
 #endif
+
 #ifndef RLIGHTS_IMPLEMENTATION
-    #define RLIGHTS_IMPLEMENTATION
-    #include <rlights.h>
+#define RLIGHTS_IMPLEMENTATION
+#include <rlights.h>
 #endif
+
+bool FileExists(const std::string& path){
+    struct stat buffer;
+    return (stat(path.c_str(), &buffer) == 0);
+}
+
+std::time_t getLastWriteTime(const std::string& path){
+    struct stat result;
+    if(stat(path.c_str(), &result) == 0){
+        return result.st_mtime;
+    }
+    return 0;
+}
 
 int main(){
     app window;
     window.Initialise_Window(1000, 1500, 60, "Borb CAM Slicer", "src/Logo-Light.png");
-    Camera camera = window.Initialise_Camera((Vector3){20.0f, 20.0f, 20.0f}, (Vector3){0.0f, 8.0f, 0.0f}, (Vector3){0.0f, 1.6f, 0.0f},45.0f, CAMERA_PERSPECTIVE);
-
+    Camera camera = window.Initialise_Camera((Vector3){20.0f, 20.0f, 20.0f}, (Vector3){0.0f, 8.0f, 0.0f}, (Vector3){0.0f, 1.6f, 0.0f}, 45.0f, CAMERA_PERSPECTIVE);
     Shader shader = window.Initialise_Shader();
     window.Initialise_Lights(shader);
-
     window.Create_File("src/Debug", "txt");
 
-    window.Add_Button(1, 20, 60, 30, 100, "X+");
-    window.Add_Button(2, 20, 60, 120, 100, "X-");
-    window.Add_Button(3, 20, 60, 30, 150, "Y+");
-    window.Add_Button(4, 20, 60, 120, 150, "Y-");
-    window.Add_Button(5, 20, 60, 30, 200, "Z+");
-    window.Add_Button(6, 20, 60, 120, 200, "Z-");
-    window.Add_Button(7, 20, 60, 30, 250, "S+");
-    window.Add_Button(8, 20, 60, 120, 250, "S-");
-    window.Add_Button(9, 20, 60, 30, 300, "A+");
-    window.Add_Button(10, 20, 60, 120, 300, "A-");
-    window.Add_Button(11, 20, 60, 30, 350, "B+");
-    window.Add_Button(12, 20, 60, 120, 350, "B-");
-    window.Add_Button(13, 20, 60, 30, 400, "C+");
-    window.Add_Button(14, 20, 60, 120, 400, "C-");
-    window.Add_Button(15, 20, 60, 30, 450, "O+");
-    window.Add_Button(16, 20, 60, 120, 450, "O-");
+    for(int i = 1; i <= 16; ++i){
+        int row = (i - 1) / 2, col = (i - 1) % 2;
+        const char* labels[] = { "X+", "X-", "Y+", "Y-", "Z+", "Z-", "S+", "S-", "A+", "A-", "B+", "B-", "C+", "C-", "O+", "O-" };
+        window.Add_Button(i, 20, 60, 30 + 50 * row, 100 + 50 * col, labels[i - 1]);
+    }
     window.Add_Button(17, 20, 60, 75, 500, "Run");
+    window.Add_Button(18, 20, 120, 75, 550, "Hide Model");
+    window.Add_Button(19, 20, 120, 75, 600, "Enable Rays");
+    window.Add_Button(20, 20, 100, 75, 650, "Slice to G-code");
+    window.Add_Button(21, 20, 100, 75, 700, "Slice A+");
+    window.Add_Button(22, 20, 100, 75, 750, "Slice A-");
+    window.Add_Button(23, 20, 100, 75, 800, "Slice B+");
+    window.Add_Button(24, 20, 100, 75, 850, "Slice B-");
+    window.Add_Button(25, 20, 180, 75, 900, "Rot: ABC");
 
     mesh models;
-
-    models.Add_Model(1, "src/model.obj");
-    models.Add_Model(2, "src/model.obj");
-    models.Add_Model(3, "src/model.obj");
-
-    multimodel model2 = { .id = 2, .model = models.Ret_Model(2) };
-    models.Position_Model(model2, (Vector3){5, 0, 0});
-    models.Reu_Model(2, model2.model);
-    
-    multimodel model3 = { .id = 3, .model = models.Ret_Model(3) };
-    models.Position_Model(model3, (Vector3){-5, 0, 0});
-    models.Reu_Model(3, model3.model);
-    
-
-    models.Sha_Model(shader);
-
-    float x = 0, xk = 0;
-    float y = 0, yk = 0;
-    float z = 0, zk = 0;
-    float s = 1, sk = 1;
-    float a = 0, ak = 0;
-    float b = 0, bk = 0;
-    float c = 0, ck = 0;
-    float o = 0;
-
     path paths;
+    slice slicing;
     paths.Create_File("src/OwO", "nc");
 
-    std::vector<std::pair<Vector3, Vector3>> pathPositions;
+    const char* modelPath = "src/model.obj";
+    int modelID = 1;
+    bool modelLoaded = false;
+    std::time_t lastModifiedTime = 0;
 
-    slice slicing;
+    bool modelVisible = true;
+    bool runSlice = false;
+    bool generateRays = false;
+    std::vector<Line> finalRayLines;
+    auto lastRunTime = std::chrono::steady_clock::now() - std::chrono::seconds(2);
 
-    //     { {1.2f, 3.4f, 5.6f}, {7.8f, 9.0f, 2.1f} }
-    // };
-
-    // paths.Path_to_Gcode1(pathPositions);
-
-    auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    auto prev_time = epoch_seconds;
-
+    float x = 0, xk = 0, y = 0, yk = 0, z = 0, zk = 0;
+    float s = 1, sk = 1, a = 0, ak = 0, b = 0, bk = 0, c = 0, ck = 0;
     float slice_size = 0.1f;
+    float sliceAngleA = 0.0f;
+    float sliceAngleB = 0.0f;
+    int rotationMode = 0;
+
+    std::vector<Line> intersectionList;
 
     while(!WindowShouldClose()){
+        if(FileExists(modelPath)){
+            std::time_t modTime = getLastWriteTime(modelPath);
+            if(!modelLoaded || modTime != lastModifiedTime){
+                if(modelLoaded) models.Rem_Model(modelID);
+                models.Add_Model(modelID, modelPath);
+                models.Sha_Model(modelID, shader);
+                modelLoaded = true;
+                lastModifiedTime = modTime;
+            }
+        } else if(modelLoaded){
+            models.Rem_Model(modelID);
+            modelLoaded = false;
+        }
 
         window.Update_Camera(&camera);
         BeginDrawing();
         ClearBackground(DARKGRAY);
 
-        // auto epoch_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        // if((epoch_seconds - prev_time >= 15)){
-            // prev_time = epoch_seconds;
-            // pathPositions.clear();
-            // for (auto& it : intersectionList) {
-            //     pathPositions.push_back(std::make_pair(Vector3Zero(), models.NormalToRotation(it.startLinePoint.Normal)));
-            // }
-            // paths.Clear_File();
-            // paths.Path_to_Gcode1(pathPositions);
+        if(window.Ret_Button(1)) x += 0.5f, xk = 0.5f;
+        if(window.Ret_Button(2)) x -= 0.5f, xk = -0.5f;
+        if(window.Ret_Button(3)) y += 0.5f, yk = 0.5f;
+        if(window.Ret_Button(4)) y -= 0.5f, yk = -0.5f;
+        if(window.Ret_Button(5)) z += 0.5f, zk = 0.5f;
+        if(window.Ret_Button(6)) z -= 0.5f, zk = -0.5f;
+        if(window.Ret_Button(7)) s += 0.5f, sk = 1.5f;
+        if(window.Ret_Button(8)) s -= 0.5f, sk = 0.5f;
+        if(window.Ret_Button(9)) a += PI / 10, ak = PI / 10;
+        if(window.Ret_Button(10)) a -= PI / 10, ak = -PI / 10;
+        if(window.Ret_Button(11)) b += PI / 10, bk = PI / 10;
+        if(window.Ret_Button(12)) b -= PI / 10, bk = -PI / 10;
+        if(window.Ret_Button(13)) c += 0.5f, ck = 0.5f;
+        if(window.Ret_Button(14)) c -= 0.5f, ck = -0.5f;
+        if(window.Ret_Button(15)) slice_size += 0.01f;
+        if(window.Ret_Button(16)) slice_size -= 0.01f;
+        if(slice_size <= 0) slice_size = 0.01f;
 
+        if(window.Ret_Button(21)) sliceAngleA += PI / 2.0f;
+        if(window.Ret_Button(22)) sliceAngleA -= PI / 2.0f;
+        if(window.Ret_Button(23)) sliceAngleB += PI / 2.0f;
+        if(window.Ret_Button(24)) sliceAngleB -= PI / 2.0f;
 
-
-        //     // window.Clear_File();
-        //     // for(int i = 0; i < models.Ret_Model(1).meshCount; i++){
-        //     //     auto vertexCount = models.Ret_Model(1).meshes[i].vertexCount;
-        //     //     auto triangleCount = models.Ret_Model(1).meshes[i].triangleCount;
-        //     //     window.Write_File_Last("src/Debug", "txt", "Mesh Number: " + std::to_string(i));
-        //     //     window.Write_File_Last("src/Debug", "txt", "Vertex Count: " + std::to_string(vertexCount));
-        //     //     window.Write_File_Last("src/Debug", "txt", "Triangle Count: " + std::to_string(triangleCount));
-
-        //     //     for(int j = 0; j < 2418; j++){
-        //     //         window.Write_File_Last("src/Debug", "txt",
-        //     //             " V" + std::to_string(j) + ": " + 
-        //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 0]) + " " +
-        //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 1]) + " " +
-        //     //             std::to_string(models.Ret_Model(1).meshes[i].vertices[(j * 3) + 2]) + " "
-        //     //         );
-        //     //     }
-        //     // }
-        // }
-
-        if(window.Ret_Button(1)){x = x + 0.5; xk = 0.5;}
-        if(window.Ret_Button(2)){x = x - 0.5; xk = -0.5;}
-        if(window.Ret_Button(3)){y = y + 0.5; yk = 0.5;}
-        if(window.Ret_Button(4)){y = y - 0.5; yk = -0.5;}
-        if(window.Ret_Button(5)){z = z + 0.5; zk = 0.5;}
-        if(window.Ret_Button(6)){z = z - 0.5; zk = -0.5;}
-        if(window.Ret_Button(7)){s = s + 0.5; sk = 1.5;}
-        if(window.Ret_Button(8)){s = s - 0.5; sk = 0.5;}
-        if(window.Ret_Button(9 )){a = a + PI/10; ak = PI/10;}
-        if(window.Ret_Button(10)){a = a - PI/10; ak = -PI/10;}
-        if(window.Ret_Button(11)){b = b + PI/10; bk = PI/10;}
-        if(window.Ret_Button(12)){b = b - PI/10; bk = -PI/10;}
-        if(window.Ret_Button(13)){c = c + 0.5; ck = 0.5;}
-        if(window.Ret_Button(14)){c = c - 0.5; ck = -0.5;}
-        if(window.Ret_Button(15)){slice_size = slice_size + 0.01f;}
-        if(window.Ret_Button(16)){slice_size = slice_size - 0.01f;}
-        if(slice_size <= 0){slice_size = 0.01f;}
-
-        multimodel currentmodel = { .id = 1, .model = models.Ret_Model(1) };
-
-        models.Scale_Model(currentmodel, sk);
-        models.Rotate_Model(currentmodel, (Vector3){ak, bk, ck});
-        models.Position_Model(currentmodel, (Vector3){xk, yk, zk});
-        models.Apply_Transformations(currentmodel);
-        models.Reu_Model(1, currentmodel.model);
-
-        std::vector<Line> intersectionList;
-
-        for(float i = -4; i <= 4; i += slice_size) {
-            Vector3 coefficients = slicing.rotation_coefficient(0,0);
-            std::vector<Line> result = models.Intersect_Model(currentmodel.model, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
-            if(!result.empty() && !intersectionList.empty()){
-                auto lastIntersection = intersectionList.back();
-                intersectionList.push_back((Line){
-                    .startLinePoint = lastIntersection.endLinePoint,
-                    .endLinePoint = result.front().startLinePoint,
-                    .type = 2
-                });
-            }
-            intersectionList.insert(intersectionList.end(), result.begin(), result.end());
+        if(window.Ret_Button(25)){
+            rotationMode = (rotationMode + 1) % 6;
+            const char* labels[] = { "Rot: ABC", "Rot: CAB", "Rot: BCA", "Rot: CBA", "Rot: ACB", "Rot: BAC" };
+            window.Rem_Button(25);
+            window.Add_Button(25, 20, 180, 75, 900, labels[rotationMode]);
         }
 
-        xk = 0;
-        yk = 0;
-        zk = 0;
-        ak = 0;
-        bk = 0;
-        ck = 0;
-        sk = 1;        
+        if(window.Ret_Button(17)){
+            auto now = std::chrono::steady_clock::now();
+            if(std::chrono::duration_cast<std::chrono::seconds>(now - lastRunTime).count() >= 1){
+                runSlice = true;
+                lastRunTime = now;
+            }
+        }
 
-        BeginMode3D(camera);
+        if(window.Ret_Button(18)){
+            modelVisible = !modelVisible;
+            window.Rem_Button(18);
+            window.Add_Button(18, 20, 120, 75, 550, modelVisible ? "Hide Model" : "Show Model");
+        }
 
-        o = models.Ret_Model(1).meshes[1].vertexCount;
+        if(window.Ret_Button(19)){
+            generateRays = !generateRays;
+            window.Rem_Button(19);
+            window.Add_Button(19, 20, 120, 75, 600, generateRays ? "Disable Rays" : "Enable Rays");
+        }
 
-        // if (!intersectionList.empty()) {
-        //     for (auto& line : intersectionList) {
-        //         if (line.type == 1) {
-        //             Vector3 normal = line.startLinePoint.Normal;
-        
-        //             Color color = {
-        //                 (unsigned char)((normal.x * 0.5f + 0.5f) * 255), // Red = X axis
-        //                 (unsigned char)((normal.y * 0.5f + 0.5f) * 255), // Green = Y axis
-        //                 (unsigned char)((normal.z * 0.5f + 0.5f) * 255), // Blue = Z axis
-        //                 255
-        //             };
-        
-        //             DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
-        //         }
-        //     }
-        // }        
+        if(window.Ret_Button(20)) {
+            std::vector<std::pair<Vector3, Vector3>> pathPositions;
+            for (const auto& line : finalRayLines) {
+                if (Vector3Length(line.startLinePoint.Normal) < 0.0001f) continue;
+                Vector3 position = line.startLinePoint.Position;
+                Vector3 rotation = models.NormalToRotation(line.startLinePoint.Normal);
+                float A = rotation.x, B = rotation.y, C = rotation.z;
+                Vector3 reordered;
 
-                        // Edge Offset
-        // float offsetDistance = 0.05f; // adjust as needed
+                switch(rotationMode){
+                    case 0: reordered = { A, B, C }; break;
+                    case 1: reordered = { C, A, B }; break;
+                    case 2: reordered = { B, C, A }; break;
+                    case 3: reordered = { C, B, A }; break;
+                    case 4: reordered = { A, C, B }; break;
+                    case 5: reordered = { B, A, C }; break;
+                }
 
-        // if (!intersectionList.empty()) {
-        //     for (auto& line : intersectionList) {
-        //         if (line.type == 1) {
-        //             // Offset both start and end points along their normals
-        //             Vector3 startOffset = MovePointAlongNormal3D(line.startLinePoint.Position, line.startLinePoint.Normal, offsetDistance);
-        //             Vector3 endOffset = MovePointAlongNormal3D(line.endLinePoint.Position, line.endLinePoint.Normal, offsetDistance);
-        
-        //             // Color based on the start point normal
-        //             Vector3 normal = Vector3Normalize(line.startLinePoint.Normal); // Ensure unit length
-        //             Color color = {
-        //                 (unsigned char)((normal.x * 0.5f + 0.5f) * 255), // Red = X
-        //                 (unsigned char)((normal.y * 0.5f + 0.5f) * 255), // Green = Y
-        //                 (unsigned char)((normal.z * 0.5f + 0.5f) * 255), // Blue = Z
-        //                 255
-        //             };
-        
-        //             DrawLine3D(startOffset, endOffset, color);
-        //         }
-        //     }
-        // }
+                pathPositions.push_back(std::make_pair(position, reordered));
+            }
 
-        // float debugLineLength = 1.0f; // adjust as needed
+            if (!pathPositions.empty()) {
+                paths.Clear_File();
+                paths.Reset_N();
+                paths.Path_to_Gcode1(pathPositions);
+                TraceLog(LOG_INFO, "G-code written with %zu points", pathPositions.size());
+            } else {
+                TraceLog(LOG_WARNING, "No valid G-code points found.");
+            }
+        }
 
-        // if (!intersectionList.empty()) {
-        //     for (auto& line : intersectionList) {
-        //         if (line.type == 1) {
-        //             Vector3 start = line.startLinePoint.Position;
-        //             Vector3 normal = Vector3Normalize(line.startLinePoint.Normal);
-        
-        //             // Skip if normal is zero-length
-        //             if (Vector3Length(normal) < 0.0001f) continue;
-        
-        //             Vector3 end = Vector3Add(start, Vector3Scale(normal, debugLineLength));
-        
-        //             // Visualize normal direction
-        //             Color color = {
-        //                 (unsigned char)((normal.x * 0.5f + 0.5f) * 255),
-        //                 (unsigned char)((normal.y * 0.5f + 0.5f) * 255),
-        //                 (unsigned char)((normal.z * 0.5f + 0.5f) * 255),
-        //                 255
-        //             };
-        
-        //             // Optional: mark start and end with spheres
-        //             DrawSphere(start, 0.01f, BLUE); // Start point
-        //             DrawSphere(end, 0.01f, RED);    // End point
-        
-        //             // Draw the normal line
-        //             DrawLine3D(start, end, color);
-        //         }
-        //     }
-        // }
-        
-        // if (!intersectionList.empty()) {
-        //     for (auto& line : intersectionList) {
-        //         if (line.type == 1) {
-        //             int meshIndex = line.meshNo;
-        
-        //             // Get the bounding box of the corresponding mesh
-        //             BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[meshIndex]);
-        //             DrawBoundingBox(bbox, Fade(WHITE, 0.25f)); // Visualize bounding box
-        
-        //             // Ray start and REVERSED direction (inward)
-        //             Vector3 rayOrigin = line.startLinePoint.Position;
-        //             Vector3 rayDirection = Vector3Negate(Vector3Normalize(line.startLinePoint.Normal)); // Reversed normal
-        
-        //             // Skip invalid directions
-        //             if (Vector3Length(rayDirection) < 0.0001f) continue;
-        
-        //             Vector3 hitPoint;
-        //             bool hit = models.RayIntersectsAABB(rayOrigin, rayDirection, bbox, &hitPoint);
-        
-        //             if (hit) {
-        //                 // Visualize the reversed normal with color
-        //                 Color color = {
-        //                     (unsigned char)((rayDirection.x * 0.5f + 0.5f) * 255),
-        //                     (unsigned char)((rayDirection.y * 0.5f + 0.5f) * 255),
-        //                     (unsigned char)((rayDirection.z * 0.5f + 0.5f) * 255),
-        //                     255
-        //                 };
-        
-        //                 DrawSphere(rayOrigin, 0.01f, BLUE);  // Ray origin
-        //                 DrawSphere(hitPoint, 0.01f, RED);    // Ray hit
-        //                 DrawLine3D(rayOrigin, hitPoint, color);
-        //             }
-        //         }
-        //     }
-        // }
+        // Continue with your modelLoaded block (Apply_Transformations, slicing, drawing, etc.)
+        // unchanged from your working implementation.
+        if(modelLoaded){
+            multimodel currentmodel = {
+                .id = modelID,
+                .model = models.Ret_Model(modelID)
+            };
 
-        
-        // --- Define AABB for culling box (Y: 0 to -4, size: 4x4x4) ---
-        BoundingBox cullBox = {
-            .min = Vector3{-2.0f, -4.0f, -2.0f},
-            .max = Vector3{ 2.0f,  0.0f,  2.0f}
-        };
+            models.Scale_Model(currentmodel, sk);
+            models.Rotate_Model(currentmodel, (Vector3){ak, bk, ck});
+            models.Position_Model(currentmodel, (Vector3){xk, yk, zk});
+            models.Apply_Transformations(currentmodel);
+            models.Reu_Model(modelID, currentmodel.model);
 
-        // --- Use AABB-based culling function ---
-        std::vector<Line> culledLines = models.Cull_Lines_ByBox(cullBox, intersectionList);
+            xk = yk = zk = ak = bk = ck = 0;
+            sk = 1;
 
-        // --- Draw the culled lines ---
-        if (!culledLines.empty()) {
-            for (auto& line : culledLines) {
-                if (line.type == 1) {
-                    Vector3 normal = line.startLinePoint.Normal;
-                
-                    Color color = {
-                        (unsigned char)((normal.x * 0.5f + 0.5f) * 255),
-                        (unsigned char)((normal.y * 0.5f + 0.5f) * 255),
-                        (unsigned char)((normal.z * 0.5f + 0.5f) * 255),
-                        255
-                    };
-                
-                    DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
+            if(runSlice){
+                intersectionList.clear();
+                for(float i = -4; i <= 4; i += slice_size){
+                    Vector3 coefficients = slicing.rotation_coefficient(sliceAngleA, sliceAngleB);
+                    std::vector<Line> result = models.Intersect_Model(currentmodel.model, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
+                    if(!result.empty() && !intersectionList.empty()){
+                        auto last = intersectionList.back();
+                        intersectionList.push_back((Line){
+                            .startLinePoint = last.endLinePoint,
+                            .endLinePoint = result.front().startLinePoint,
+                            .type = 2
+                        });
+                    }
+                    intersectionList.insert(intersectionList.end(), result.begin(), result.end());
+                }
+
+                finalRayLines.clear();
+                BoundingBox cullBox = { (Vector3){ -2, -4, -2 }, (Vector3){ 2, 0, 2 } };
+                intersectionList = models.Cull_Lines_ByBox(cullBox, intersectionList);
+                std::vector<Line> rayLines;
+
+                for(Line& line : intersectionList){
+                    if(line.type != 1) continue;
+                    int meshIndex = line.meshNo;
+                    if(meshIndex < 0 || meshIndex >= currentmodel.model.meshCount) continue;
+                    Vector3 origin = line.startLinePoint.Position;
+                    Vector3 dir = Vector3Negate(Vector3Normalize(line.startLinePoint.Normal));
+                    if(Vector3Length(dir) < 0.0001f) continue;
+                    Vector3 hit;
+                    if(models.RayIntersectsAABB(origin, dir, GetMeshBoundingBox(currentmodel.model.meshes[meshIndex]), &hit)){
+                        rayLines.push_back((Line){
+                            .startLinePoint = { origin, line.startLinePoint.Normal },
+                            .endLinePoint   = { hit,    line.startLinePoint.Normal },
+                            .type           = 1,
+                            .meshNo         = meshIndex,
+                            .islandNo       = line.islandNo
+                        });
+                    }
+                }
+
+                std::vector<Line> processed;
+                for(Line& ray : rayLines){
+                    std::vector<Line> set = { ray };
+                    for(int j = 0; j < currentmodel.model.meshCount; j++){
+                        if(j == ray.meshNo) continue;
+                        BoundingBox otherBox = GetMeshBoundingBox(currentmodel.model.meshes[j]);
+                        set = models.Cull_Lines_ByBox(otherBox, set);
+                        if(set.empty()) break;
+                    }
+                    for(Line& trimmed : set){
+                        processed.push_back(trimmed);
+                    }
+                }
+
+                finalRayLines = models.Cull_Lines_ByBox(cullBox, processed);
+                runSlice = false;
+            }
+
+            BeginMode3D(camera);
+            if(modelVisible) models.Run_Models();
+
+            for(const Line& line : intersectionList){
+                if(line.type == 1){
+                    DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, BLUE);
                 }
             }
+
+            if(generateRays){
+                for(const Line& line : finalRayLines){
+                    DrawSphere(line.startLinePoint.Position, 0.01f, BLUE);
+                    DrawSphere(line.endLinePoint.Position, 0.01f, RED);
+                    DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, GREEN);
+                }
+                DrawCube((Vector3){ 0, -2, 0 }, 4, 4, 4, (Color){ 255, 0, 0, 51 });
+                DrawBoundingBox((BoundingBox){ (Vector3){ -2, -4, -2 }, (Vector3){ 2, 0, 2 } }, RED);
+            }
+
+            EndMode3D();
         }
 
-        // --- Draw transparent culling box for debugging ---
-        Color transparentColor = { 255, 0, 0, 51 };  // 20% opacity red
-        Color wireColor = { 255, 0, 0, 255 };        // Full red for outline
-
-        DrawCube({0.0f, -2.0f, 0.0f}, 4.0f, 4.0f, 4.0f, transparentColor);  // Solid cube
-        DrawBoundingBox(cullBox, wireColor);                                // Wireframe box
-
-        
-
-        // models.Run_Models();
-
-        // BoundingBox bbox1 = GetMeshBoundingBox(currentmodel.model.meshes[0]);
-        // DrawBoundingBox(bbox1, RED);
-        // BoundingBox bbox2 = GetMeshBoundingBox(currentmodel.model.meshes[1]);
-        // DrawBoundingBox(bbox2, RED);
-
-        EndMode3D();
+        DrawText(TextFormat("Slicing Angle A: %.2f deg", sliceAngleA * RAD2DEG), 300, 700, 20, RED);
+        DrawText(TextFormat("Slicing Angle B: %.2f deg", sliceAngleB * RAD2DEG), 300, 730, 20, RED);
 
         window.Run_Buttons();
-
         DrawFPS(10, 10);
         EndDrawing();
     }
+
     models.Stop_Models();
     CloseWindow();
     return 0;

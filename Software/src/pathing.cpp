@@ -52,10 +52,25 @@ bool path::Write_File(const std::string& fileName, const std::string& extension,
     return true;
 }
 
-bool path::Write_File_Last(const std::string& fileName, const std::string& extension, const std::string& content) {
-    std::string filePath = fileName + "." + extension;
+// bool path::Write_File_Last(const std::string& fileName, const std::string& extension, const std::string& content) {
+//     std::string filePath = fileName + "." + extension;
 
-    if(extension == ""){filePath = fileName;}
+//     if(extension == ""){filePath = fileName;}
+
+//     std::ofstream outfile(filePath, std::ios::app); // Open in append mode
+//     if (!outfile.is_open()) {
+//         TraceLog(LOG_WARNING, "Failed to open file for writing: %s", filePath.c_str());
+//         return false;
+//     }
+
+//     // Always write content as a new line at the end
+//     outfile << content << "\n";
+//     outfile.close();
+//     return true;
+// }
+
+bool path::Write_File_Last(const std::string& fileName, const std::string& extension, const std::string& content) {
+    std::string filePath = fileName + (extension.empty() ? "" : "." + extension);
 
     std::ofstream outfile(filePath, std::ios::app); // Open in append mode
     if (!outfile.is_open()) {
@@ -63,10 +78,14 @@ bool path::Write_File_Last(const std::string& fileName, const std::string& exten
         return false;
     }
 
-    // Always write content as a new line at the end
-    outfile << content << "\n";
+    // Write with N line number
+    outfile << "N" << n_line_counter++ << " " << content << "\n";
     outfile.close();
     return true;
+}
+
+void path::Reset_N(){
+    n_line_counter = 1;
 }
 
 bool path::Default_File(const std::string& fileName, const std::string& extension){
