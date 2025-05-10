@@ -217,6 +217,9 @@ bool mesh::RayIntersectsAABB(Vector3 rayOrigin, Vector3 rayDir, BoundingBox box,
     return false;
 }
 
+Vector3 mesh::PointToVec3(Point point){
+    return (Vector3){point.Position.x, point.Position.y, point.Position.z};
+}
 
 /**##########################################
  * #       Mesh Manipulation Functions      #
@@ -517,6 +520,50 @@ std::vector<Line> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line
 
     return result;
 }
+
+float mesh::pointToPointDistance(Vector3 StartPoint, Vector3 EndPoint){
+    float dx = EndPoint.x - StartPoint.x;
+    float dy = EndPoint.y - StartPoint.y;
+    float dz = EndPoint.z - StartPoint.z;
+    return sqrtf(dx*dx + dy*dy + dz*dz);
+}
+
+float mesh::distancePoint(std::vector<Line> lineList){
+    float distance = 0;
+    for(auto line : lineList){
+        distance += pointToPointDistance(PointToVec3(line.startLinePoint), PointToVec3(line.endLinePoint));
+    }
+    return distance;
+}
+
+Point mesh::lastPoint(std::vector<Line> lineList, int startNo, bool direction){
+    if(lineList.empty() || startNo < 0 || startNo >= (int)lineList.size()){
+        return {}; // Return default Point if invalid input
+    }
+
+    Point expected = lineList[startNo].endLinePoint;
+    int listSize = (int)lineList.size();
+    int index = startNo;
+
+    for(int count = 0; count < listSize; ++count){
+        index = direction ? (index + 1) % listSize
+                          : (index - 1 + listSize) % listSize;
+
+        Line& currentLine = lineList[index];
+
+        if(pointToPointDistance(currentLine.startLinePoint.Position, expected.Position) < 0.001f){
+            expected = currentLine.endLinePoint;
+        }else if(pointToPointDistance(currentLine.endLinePoint.Position, expected.Position) < 0.001f){
+            expected = currentLine.startLinePoint;
+        }else{
+            break; // Chain is broken
+        }
+    }
+
+    return expected;
+}
+
+
 
 bool mesh::IsPointInsideMesh(Vector3 point, const std::vector<Triangle>& triangles){
     Vector3 rayDir = {1.0f, 0.123f, 0.456f}; // Skewed to avoid edge cases

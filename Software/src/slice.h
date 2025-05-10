@@ -29,6 +29,13 @@ class slice{
 
     // Convert Rotation X Y to Coefficient A B C
     Vector3 rotation_coefficient(float Rotation_X, float Rotation_Y);
+
+    /**##########################################
+     * #            Algorithms Tools            #
+     * ##########################################*/
+
+    // TSP
+    std::vector<Line> Generate_TSP_Lines_FromPoints(std::vector<Point> points);
     
     /**##########################################
      * #              Slicing Tools             #

@@ -48,15 +48,21 @@ int main(){
         const char* labels[] = { "X+", "X-", "Y+", "Y-", "Z+", "Z-", "S+", "S-", "A+", "A-", "B+", "B-", "C+", "C-", "O+", "O-" };
         window.Add_Button(i, 20, 60, 30 + 50 * row, 100 + 50 * col, labels[i - 1]);
     }
+
     window.Add_Button(17, 20, 60, 75, 500, "Run");
-    window.Add_Button(18, 20, 120, 75, 550, "Hide Model");
-    window.Add_Button(19, 20, 120, 75, 600, "Enable Rays");
-    window.Add_Button(20, 20, 100, 75, 650, "Slice to G-code");
-    window.Add_Button(21, 20, 100, 75, 700, "Slice A+");
-    window.Add_Button(22, 20, 100, 75, 750, "Slice A-");
-    window.Add_Button(23, 20, 100, 75, 800, "Slice B+");
-    window.Add_Button(24, 20, 100, 75, 850, "Slice B-");
-    window.Add_Button(25, 20, 180, 75, 900, "Rot: ABC");
+    window.Add_Button(18, 20, 120, 75, 525, "Hide Model");
+    window.Add_Button(19, 20, 120, 75, 550, "Enable Rays");
+    window.Add_Button(20, 20, 100, 75, 575, "Slice to G-code");
+    window.Add_Button(21, 20, 100, 75, 600, "Slice A+");
+    window.Add_Button(22, 20, 100, 75, 625, "Slice A-");
+    window.Add_Button(23, 20, 100, 75, 650, "Slice B+");
+    window.Add_Button(24, 20, 100, 75, 675, "Slice B-");
+    window.Add_Button(25, 20, 180, 75, 700, "Rot: ABC");
+    window.Add_Button(26, 20, 160, 75, 725, "Hide lastPoint");
+    window.Add_Button(27, 20, 160, 75, 750, "Randomise Points");
+    window.Add_Button(28, 20, 160, 75, 775, "Apply TSP");
+
+
 
     mesh models;
     path paths;
@@ -71,7 +77,9 @@ int main(){
     bool modelVisible = true;
     bool runSlice = false;
     bool generateRays = false;
+    bool showLastPoint = true;
     std::vector<Line> finalRayLines;
+    std::vector<Point> sliceLastPoints;
     auto lastRunTime = std::chrono::steady_clock::now() - std::chrono::seconds(2);
 
     float x = 0, xk = 0, y = 0, yk = 0, z = 0, zk = 0;
@@ -82,6 +90,8 @@ int main(){
     int rotationMode = 0;
 
     std::vector<Line> intersectionList;
+
+    std::vector<Line> tspLines;
 
     while(!WindowShouldClose()){
         if(FileExists(modelPath)){
@@ -132,6 +142,31 @@ int main(){
             window.Add_Button(25, 20, 180, 75, 900, labels[rotationMode]);
         }
 
+        if(window.Ret_Button(26)){
+            showLastPoint = !showLastPoint;
+            window.Rem_Button(26);
+            window.Add_Button(26, 20, 160, 75, 950, showLastPoint ? "Hide lastPoint" : "Show lastPoint");
+        }
+
+        if(window.Ret_Button(27)){
+            sliceLastPoints.clear();
+            float i = -4;
+            Model modelCopy = models.Ret_Model(modelID);
+            while (i <= 4) {
+                Vector3 coefficients = slicing.rotation_coefficient(sliceAngleA, sliceAngleB);
+                std::vector<Line> result = models.Intersect_Model(modelCopy, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
+                if (!result.empty()) {
+                    int randomStart = GetRandomValue(0, (int)result.size() - 1);
+                    sliceLastPoints.push_back(models.lastPoint(result, randomStart, true));
+                }
+                i += slice_size;
+            }
+        }
+
+        if(window.Ret_Button(28)){
+            tspLines = slicing.Generate_TSP_Lines_FromPoints(sliceLastPoints);
+        }
+
         if(window.Ret_Button(17)){
             auto now = std::chrono::steady_clock::now();
             if(std::chrono::duration_cast<std::chrono::seconds>(now - lastRunTime).count() >= 1){
@@ -152,39 +187,6 @@ int main(){
             window.Add_Button(19, 20, 120, 75, 600, generateRays ? "Disable Rays" : "Enable Rays");
         }
 
-        if(window.Ret_Button(20)) {
-            std::vector<std::pair<Vector3, Vector3>> pathPositions;
-            for (const auto& line : finalRayLines) {
-                if (Vector3Length(line.startLinePoint.Normal) < 0.0001f) continue;
-                Vector3 position = line.startLinePoint.Position;
-                Vector3 rotation = models.NormalToRotation(line.startLinePoint.Normal);
-                float A = rotation.x, B = rotation.y, C = rotation.z;
-                Vector3 reordered;
-
-                switch(rotationMode){
-                    case 0: reordered = { A, B, C }; break;
-                    case 1: reordered = { C, A, B }; break;
-                    case 2: reordered = { B, C, A }; break;
-                    case 3: reordered = { C, B, A }; break;
-                    case 4: reordered = { A, C, B }; break;
-                    case 5: reordered = { B, A, C }; break;
-                }
-
-                pathPositions.push_back(std::make_pair(position, reordered));
-            }
-
-            if (!pathPositions.empty()) {
-                paths.Clear_File();
-                paths.Reset_N();
-                paths.Path_to_Gcode1(pathPositions);
-                TraceLog(LOG_INFO, "G-code written with %zu points", pathPositions.size());
-            } else {
-                TraceLog(LOG_WARNING, "No valid G-code points found.");
-            }
-        }
-
-        // Continue with your modelLoaded block (Apply_Transformations, slicing, drawing, etc.)
-        // unchanged from your working implementation.
         if(modelLoaded){
             multimodel currentmodel = {
                 .id = modelID,
@@ -202,6 +204,8 @@ int main(){
 
             if(runSlice){
                 intersectionList.clear();
+                sliceLastPoints.clear();
+
                 for(float i = -4; i <= 4; i += slice_size){
                     Vector3 coefficients = slicing.rotation_coefficient(sliceAngleA, sliceAngleB);
                     std::vector<Line> result = models.Intersect_Model(currentmodel.model, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
@@ -213,48 +217,12 @@ int main(){
                             .type = 2
                         });
                     }
+                    if (!result.empty()) {
+                        sliceLastPoints.push_back(models.lastPoint(result, 0, true));
+                    }
                     intersectionList.insert(intersectionList.end(), result.begin(), result.end());
                 }
 
-                finalRayLines.clear();
-                BoundingBox cullBox = { (Vector3){ -2, -4, -2 }, (Vector3){ 2, 0, 2 } };
-                intersectionList = models.Cull_Lines_ByBox(cullBox, intersectionList);
-                std::vector<Line> rayLines;
-
-                for(Line& line : intersectionList){
-                    if(line.type != 1) continue;
-                    int meshIndex = line.meshNo;
-                    if(meshIndex < 0 || meshIndex >= currentmodel.model.meshCount) continue;
-                    Vector3 origin = line.startLinePoint.Position;
-                    Vector3 dir = Vector3Negate(Vector3Normalize(line.startLinePoint.Normal));
-                    if(Vector3Length(dir) < 0.0001f) continue;
-                    Vector3 hit;
-                    if(models.RayIntersectsAABB(origin, dir, GetMeshBoundingBox(currentmodel.model.meshes[meshIndex]), &hit)){
-                        rayLines.push_back((Line){
-                            .startLinePoint = { origin, line.startLinePoint.Normal },
-                            .endLinePoint   = { hit,    line.startLinePoint.Normal },
-                            .type           = 1,
-                            .meshNo         = meshIndex,
-                            .islandNo       = line.islandNo
-                        });
-                    }
-                }
-
-                std::vector<Line> processed;
-                for(Line& ray : rayLines){
-                    std::vector<Line> set = { ray };
-                    for(int j = 0; j < currentmodel.model.meshCount; j++){
-                        if(j == ray.meshNo) continue;
-                        BoundingBox otherBox = GetMeshBoundingBox(currentmodel.model.meshes[j]);
-                        set = models.Cull_Lines_ByBox(otherBox, set);
-                        if(set.empty()) break;
-                    }
-                    for(Line& trimmed : set){
-                        processed.push_back(trimmed);
-                    }
-                }
-
-                finalRayLines = models.Cull_Lines_ByBox(cullBox, processed);
                 runSlice = false;
             }
 
@@ -267,15 +235,36 @@ int main(){
                 }
             }
 
-            if(generateRays){
-                for(const Line& line : finalRayLines){
-                    DrawSphere(line.startLinePoint.Position, 0.01f, BLUE);
-                    DrawSphere(line.endLinePoint.Position, 0.01f, RED);
-                    DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, GREEN);
+            if (showLastPoint) {
+                for (const Point& p : sliceLastPoints) {
+                    DrawSphere(p.Position, 0.08f, GREEN);
                 }
-                DrawCube((Vector3){ 0, -2, 0 }, 4, 4, 4, (Color){ 255, 0, 0, 51 });
-                DrawBoundingBox((BoundingBox){ (Vector3){ -2, -4, -2 }, (Vector3){ 2, 0, 2 } }, RED);
             }
+
+            // for(const Line& line : tspLines){
+            //     DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, ORANGE);
+            // }
+
+        BoundingBox bbox = GetMeshBoundingBox(models.Ret_Model(modelID).meshes[0]);
+                
+        std::vector<Vector3> bboxHitPoints;
+                
+        for (const Point& tspPoint : sliceLastPoints) {
+            Vector3 dir = Vector3Negate(Vector3Normalize(tspPoint.Normal)); // flipped normal
+            Vector3 hit;
+        
+            if (models.RayIntersectsAABB(tspPoint.Position, dir, bbox, &hit)) {
+                DrawLine3D(tspPoint.Position, hit, RED);  // Visual: flipped direction
+                bboxHitPoints.push_back(hit);             // Store for connection
+            }
+        }
+        
+        // Connect bounding box hit points
+        for (size_t i = 0; i + 1 < bboxHitPoints.size(); ++i) {
+            DrawLine3D(bboxHitPoints[i], bboxHitPoints[i + 1], DARKGREEN);
+        }
+
+
 
             EndMode3D();
         }

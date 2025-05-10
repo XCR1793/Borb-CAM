@@ -25,7 +25,6 @@ struct Triangle{
     Point Vertex1;
     Point Vertex2;
     Point Vertex3;
-    // Vector3 Facing;
 };
 
 struct Line{
@@ -34,6 +33,17 @@ struct Line{
     int type; // 1 = Surface, 2 = Movement
     int meshNo;
     int islandNo;
+};
+
+struct Lines{
+    std::vector<Line> lineList;
+    Vector3 startPosition;
+    Vector3 endPosition;
+    float distance;
+};
+
+struct LineList{
+    std::vector<Lines> allLines;
 };
 
 class mesh{
@@ -84,6 +94,8 @@ class mesh{
     
     bool RayIntersectsAABB(Vector3 rayOrigin, Vector3 rayDir, BoundingBox box, Vector3* out);
 
+    Vector3 PointToVec3(Point point);
+
     /**
      * Add point to point, to line equation
      * Add Line to Plane Intersection 3D Point equation
@@ -119,6 +131,12 @@ class mesh{
 
     std::vector<Line> Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines);
 
+    float pointToPointDistance(Vector3 StartPoint, Vector3 EndPoint);
+
+    float distancePoint(std::vector<Line> lineList);
+
+    Point lastPoint(std::vector<Line> lineList, int startNo, bool direction);
+
     // Everything below here currently doesnt work (Trim function doesnt work properly)
     bool IsPointInsideMesh(Vector3 point, const std::vector<Triangle>& triangles);
 
@@ -138,5 +156,4 @@ class mesh{
     private:
     std::vector<multimodel> models;
 };
-
 #endif
