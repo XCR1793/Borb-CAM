@@ -35,6 +35,57 @@ std::time_t getLastWriteTime(const std::string& path){
     return 0;
 }
 
+const int FACE_NONE   = -1;
+const int FACE_TOP    = 0;
+const int FACE_BOTTOM = 1;
+const int FACE_LEFT   = 2;
+const int FACE_RIGHT  = 3;
+const int FACE_FRONT  = 4;
+const int FACE_BACK   = 5;
+
+int GetBoxFace(Vector3 point, BoundingBox box, float epsilon = 0.001f) {
+    if (fabs(point.y - box.max.y) < epsilon) return FACE_TOP;
+    if (fabs(point.y - box.min.y) < epsilon) return FACE_BOTTOM;
+    if (fabs(point.x - box.min.x) < epsilon) return FACE_LEFT;
+    if (fabs(point.x - box.max.x) < epsilon) return FACE_RIGHT;
+    if (fabs(point.z - box.max.z) < epsilon) return FACE_FRONT;
+    if (fabs(point.z - box.min.z) < epsilon) return FACE_BACK;
+    return FACE_NONE;
+}
+
+float TotalTSPDistance(const std::vector<Point>& points) {
+    float total = 0.0f;
+    for (size_t i = 1; i < points.size(); ++i) {
+        total += Vector3Distance(points[i - 1].Position, points[i].Position);
+    }
+    return total;
+}
+
+void TwoOptOptimizePoints(std::vector<Point>& path) {
+    bool improved = true;
+    while (improved) {
+        improved = false;
+        for (size_t i = 1; i < path.size() - 2; ++i) {
+            for (size_t k = i + 1; k < path.size() - 1; ++k) {
+                std::vector<Point> newPath = path;
+
+                // Manual reverse between i and k
+                int a = i, b = k;
+                while (a < b) {
+                    std::swap(newPath[a], newPath[b]);
+                    a++;
+                    b--;
+                }
+
+                if (TotalTSPDistance(newPath) < TotalTSPDistance(path)) {
+                    path = newPath;
+                    improved = true;
+                }
+            }
+        }
+    }
+}
+
 int main(){
     app window;
     window.Initialise_Window(1000, 1500, 60, "Borb CAM Slicer", "src/Logo-Light.png");
@@ -93,6 +144,7 @@ int main(){
 
     std::vector<Line> tspLines;
 
+    
     while(!WindowShouldClose()){
         if(FileExists(modelPath)){
             std::time_t modTime = getLastWriteTime(modelPath);
@@ -167,6 +219,7 @@ int main(){
             tspLines = slicing.Generate_TSP_Lines_FromPoints(sliceLastPoints);
         }
 
+
         if(window.Ret_Button(17)){
             auto now = std::chrono::steady_clock::now();
             if(std::chrono::duration_cast<std::chrono::seconds>(now - lastRunTime).count() >= 1){
@@ -202,29 +255,98 @@ int main(){
             xk = yk = zk = ak = bk = ck = 0;
             sk = 1;
 
-            if(runSlice){
+            if (runSlice) {
                 intersectionList.clear();
                 sliceLastPoints.clear();
-
-                for(float i = -4; i <= 4; i += slice_size){
+            
+                std::vector<std::vector<Line>> allSlices;
+                std::vector<float> sliceHeights;
+            
+                for (float i = -4; i <= 4; i += slice_size) {
                     Vector3 coefficients = slicing.rotation_coefficient(sliceAngleA, sliceAngleB);
                     std::vector<Line> result = models.Intersect_Model(currentmodel.model, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
-                    if(!result.empty() && !intersectionList.empty()){
+                
+                    if (!result.empty() && !intersectionList.empty()) {
                         auto last = intersectionList.back();
                         intersectionList.push_back((Line){
                             .startLinePoint = last.endLinePoint,
-                            .endLinePoint = result.front().startLinePoint,
+                            .endLinePoint   = result.front().startLinePoint,
                             .type = 2
                         });
                     }
+                
                     if (!result.empty()) {
-                        sliceLastPoints.push_back(models.lastPoint(result, 0, true));
+                        allSlices.push_back(result);
+                        sliceHeights.push_back(i);
                     }
+                
                     intersectionList.insert(intersectionList.end(), result.begin(), result.end());
                 }
+            
+                // Optimized TSP-style chaining
+                std::vector<std::pair<int, Point>> indexedPoints;
+                for (int i = 0; i < (int)allSlices.size(); ++i) {
+                    Point p = models.lastPoint(allSlices[i], 0, true);
+                    indexedPoints.push_back({ i, p });
+                }
 
+                // Manual 2-opt with index preservation
+                bool improved = true;
+                while (improved) {
+                    improved = false;
+                    for (size_t i = 1; i < indexedPoints.size() - 2; ++i) {
+                        for (size_t k = i + 1; k < indexedPoints.size() - 1; ++k) {
+                            auto newPath = indexedPoints;
+                            int a = i, b = k;
+                            while (a < b) {
+                                std::swap(newPath[a], newPath[b]);
+                                a++;
+                                b--;
+                            }
+                        
+                            float oldLen = 0.0f, newLen = 0.0f;
+                            for (size_t j = 1; j < indexedPoints.size(); ++j)
+                                oldLen += Vector3Distance(indexedPoints[j - 1].second.Position, indexedPoints[j].second.Position);
+                            for (size_t j = 1; j < newPath.size(); ++j)
+                                newLen += Vector3Distance(newPath[j - 1].second.Position, newPath[j].second.Position);
+                        
+                            if (newLen < oldLen) {
+                                indexedPoints = newPath;
+                                improved = true;
+                            }
+                        }
+                    }
+                }
+
+                // Extract reordered slice points
+                sliceLastPoints.clear();
+                for (size_t i = 0; i < indexedPoints.size(); ++i) {
+                    int sliceIdx = indexedPoints[i].first;
+                    const std::vector<Line>& slice = allSlices[sliceIdx];
+                
+                    int bestStart = 0;
+                    if (!sliceLastPoints.empty()) {
+                        const Point& prev = sliceLastPoints.back();
+                        float bestDist = FLT_MAX;
+                    
+                        for (int j = 0; j < (int)slice.size(); ++j) {
+                            float d = Vector3Distance(prev.Position, slice[j].startLinePoint.Position);
+                            if (d < bestDist) {
+                                bestDist = d;
+                                bestStart = j;
+                            }
+                        }
+                    }
+                
+                    sliceLastPoints.push_back(models.lastPoint(slice, bestStart, true));
+                }
+
+
+
+            
                 runSlice = false;
             }
+
 
             BeginMode3D(camera);
             if(modelVisible) models.Run_Models();
@@ -246,25 +368,99 @@ int main(){
             // }
 
         BoundingBox bbox = GetMeshBoundingBox(models.Ret_Model(modelID).meshes[0]);
-                
+
         std::vector<Vector3> bboxHitPoints;
-                
+
+        // Snap points cleanly to bounding box faces to prevent precision errors
+        auto SnapToBoxFace = [](Vector3 p, BoundingBox box, float eps = 0.01f) -> Vector3 {
+            if (fabs(p.x - box.min.x) < eps) p.x = box.min.x;
+            else if (fabs(p.x - box.max.x) < eps) p.x = box.max.x;
+        
+            if (fabs(p.y - box.min.y) < eps) p.y = box.min.y;
+            else if (fabs(p.y - box.max.y) < eps) p.y = box.max.y;
+        
+            if (fabs(p.z - box.min.z) < eps) p.z = box.min.z;
+            else if (fabs(p.z - box.max.z) < eps) p.z = box.max.z;
+        
+            return p;
+        };
+
+        auto IsPointNearFaceButInsideBox = [](Vector3 p, BoundingBox box, float epsilon = 0.005f) -> bool {
+            bool insideX = p.x > box.min.x + epsilon && p.x < box.max.x - epsilon;
+            bool insideY = p.y > box.min.y + epsilon && p.y < box.max.y - epsilon;
+            bool insideZ = p.z > box.min.z + epsilon && p.z < box.max.z - epsilon;
+        
+            // Close to a face (within epsilon), but inside along at least one axis
+            bool nearX = fabs(p.x - box.min.x) < epsilon || fabs(p.x - box.max.x) < epsilon;
+            bool nearY = fabs(p.y - box.min.y) < epsilon || fabs(p.y - box.max.y) < epsilon;
+            bool nearZ = fabs(p.z - box.min.z) < epsilon || fabs(p.z - box.max.z) < epsilon;
+        
+            return (insideX && nearY && nearZ) || (nearX && insideY && nearZ) || (nearX && nearY && insideZ);
+        };
+
+        // Cast rays to box and store hit points (snapped + fixed)
         for (const Point& tspPoint : sliceLastPoints) {
-            Vector3 dir = Vector3Negate(Vector3Normalize(tspPoint.Normal)); // flipped normal
+            Vector3 dir = Vector3Negate(Vector3Normalize(tspPoint.Normal));
             Vector3 hit;
         
             if (models.RayIntersectsAABB(tspPoint.Position, dir, bbox, &hit)) {
-                DrawLine3D(tspPoint.Position, hit, RED);  // Visual: flipped direction
-                bboxHitPoints.push_back(hit);             // Store for connection
+                hit = SnapToBoxFace(hit, bbox);
+            
+                if (IsPointNearFaceButInsideBox(hit, bbox)) {
+                    Vector3 center = Vector3Lerp(bbox.min, bbox.max, 0.5f);
+                    Vector3 pushDir = Vector3Normalize(Vector3Subtract(hit, center));
+                    hit = Vector3Add(hit, Vector3Scale(pushDir, 0.01f));  // Push slightly out
+                    hit = SnapToBoxFace(hit, bbox);                      // Re-snap to face
+                
+                    DrawSphere(hit, 0.03f, RED);  // Optional: mark problem point
+                }
+            
+                DrawLine3D(tspPoint.Position, hit, RED);
+                bboxHitPoints.push_back(hit);
             }
         }
-        
-        // Connect bounding box hit points
+
+        // Draw surface-adhering connection paths
         for (size_t i = 0; i + 1 < bboxHitPoints.size(); ++i) {
-            DrawLine3D(bboxHitPoints[i], bboxHitPoints[i + 1], DARKGREEN);
+            Vector3 p1 = SnapToBoxFace(bboxHitPoints[i], bbox);
+            Vector3 p2 = SnapToBoxFace(bboxHitPoints[i + 1], bbox);
+        
+            int face1 = GetBoxFace(p1, bbox);
+            int face2 = GetBoxFace(p2, bbox);
+        
+            if (face1 == face2 && face1 != FACE_NONE) {
+                DrawLine3D(p1, p2, DARKGREEN);
+            } else {
+                bool sameX = fabs(p1.x - p2.x) < 0.001f;
+                bool sameY = fabs(p1.y - p2.y) < 0.001f;
+                bool sameZ = fabs(p1.z - p2.z) < 0.001f;
+            
+                if (sameX) {
+                    Vector3 mid = SnapToBoxFace({ p1.x, p2.y, p1.z }, bbox);
+                    DrawLine3D(p1, mid, DARKGREEN);
+                    DrawLine3D(mid, p2, DARKGREEN);
+                } else if (sameY) {
+                    Vector3 mid = SnapToBoxFace({ p2.x, p1.y, p1.z }, bbox);
+                    DrawLine3D(p1, mid, DARKGREEN);
+                    DrawLine3D(mid, p2, DARKGREEN);
+                } else if (sameZ) {
+                    Vector3 mid = SnapToBoxFace({ p2.x, p1.y, p1.z }, bbox);
+                    DrawLine3D(p1, mid, DARKGREEN);
+                    DrawLine3D(mid, p2, DARKGREEN);
+                } else {
+                    Vector3 corner = SnapToBoxFace({ p2.x, p1.y, p2.z }, bbox);
+                    DrawLine3D(p1, corner, DARKGREEN);
+                    DrawLine3D(corner, p2, DARKGREEN);
+                }
+            }
         }
 
 
+
+        // Connect bounding box hit points
+        // for (size_t i = 0; i + 1 < bboxHitPoints.size(); ++i) {
+        //     DrawLine3D(bboxHitPoints[i], bboxHitPoints[i + 1], DARKGREEN);
+        // }
 
             EndMode3D();
         }
