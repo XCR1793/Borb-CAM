@@ -327,15 +327,44 @@ int main(){
                     int bestStart = 0;
                     if (!sliceLastPoints.empty()) {
                         const Point& prev = sliceLastPoints.back();
-                        float bestDist = FLT_MAX;
-                    
+
+                        BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[0]);
+
+                        float bestScore = FLT_MAX;
+                        int bestStart = 0;
+                        float w1 = 0.7f, w2 = 0.3f;
+                                            
                         for (int j = 0; j < (int)slice.size(); ++j) {
-                            float d = Vector3Distance(prev.Position, slice[j].startLinePoint.Position);
-                            if (d < bestDist) {
-                                bestDist = d;
+                            Point candidate = models.lastPoint(slice, j, true);
+                        
+                            float distPos = 0.0f, distHit = 0.0f;
+                        
+                            if (!sliceLastPoints.empty()) {
+                                const Point& prev = sliceLastPoints.back();
+                            
+                                distPos = Vector3Distance(prev.Position, candidate.Position);
+                            
+                                Vector3 prevHit, currHit;
+                                Vector3 prevDir = Vector3Negate(Vector3Normalize(prev.Normal));
+                                Vector3 currDir = Vector3Negate(Vector3Normalize(candidate.Normal));
+                            
+                                if (models.RayIntersectsAABB(prev.Position, prevDir, bbox, &prevHit) &&
+                                    models.RayIntersectsAABB(candidate.Position, currDir, bbox, &currHit)) {
+                                    distHit = Vector3Distance(prevHit, currHit);
+                                } else {
+                                    distHit = distPos * 2.0f; // fallback penalty
+                                }
+                            }
+                        
+                            float score = w1 * distPos + w2 * distHit;
+                        
+                            if (score < bestScore) {
+                                bestScore = score;
                                 bestStart = j;
                             }
                         }
+
+
                     }
                 
                     sliceLastPoints.push_back(models.lastPoint(slice, bestStart, true));

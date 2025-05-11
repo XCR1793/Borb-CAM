@@ -13,6 +13,18 @@ Vector3 slice::rotation_coefficient(float Rotation_X, float Rotation_Y){
  * #            Algorithms Tools            #
  * ##########################################*/
 
+// TSP Selector
+std::vector<Line> slice::TSP(std::vector<Point> points, TSP_Types tsp){
+    switch(tsp){
+        case Nearest_Neighbor:
+            return Generate_TSP_Lines_FromPoints(points);
+        default:
+            return{};
+    }
+}
+
+
+
 // TSP Nearest Neighbor
 std::vector<Line> slice::Generate_TSP_Lines_FromPoints(std::vector<Point> points){
     std::vector<Line> tspLines;

@@ -20,6 +20,9 @@ struct paths{
     Vector4 slice_equation; // First 3: Rotation X Y Z, Last Digit: slice height
 };
 
+enum TSP_Types{
+    Nearest_Neighbor
+};
 
 class slice{
     public:
@@ -34,7 +37,10 @@ class slice{
      * #            Algorithms Tools            #
      * ##########################################*/
 
-    // TSP
+    // TSP Selector
+    std::vector<Line> TSP(std::vector<Point> points, TSP_Types tsp);
+
+    // TSP Nearest Neighbor
     std::vector<Line> Generate_TSP_Lines_FromPoints(std::vector<Point> points);
     
     /**##########################################
