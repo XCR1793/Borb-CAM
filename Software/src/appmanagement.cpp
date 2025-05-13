@@ -20,16 +20,55 @@ void app::Add_Button(int id){
     }
 }
 
+void app::Add_Button(int id, float xpos, float ypos, const char *text){
+    if(!ID_Check(id, buttons)){
+        buttons.push_back((App_Button){id, default_height, default_width, xpos, ypos, text, 0, 0});
+    }
+}
+
+void app::Add_Button(int id, float xpos, float ypos, const char *text, float increment){
+    if(!ID_Check(id, buttons)){
+        buttons.push_back((App_Button){id, default_height, default_width, xpos, ypos, text, 0, increment});
+    }
+}
+
 void app::Add_Button(int id, float height, float width, float xpos, float ypos, const char *text){
     if(!ID_Check(id, buttons)){
-        buttons.push_back((App_Button){id, height, width, xpos, ypos, text, 0});
+        buttons.push_back((App_Button){id, height, width, xpos, ypos, text, 0, 0});
     }
+}
+
+void app::Add_Button(int id, float height, float width, float xpos, float ypos, const char *text, float increment){
+    if(!ID_Check(id, buttons)){
+        buttons.push_back((App_Button){id, height, width, xpos, ypos, text, 0, increment});
+    }
+}
+
+void app::Add_Button_Pair(int id_pos, int id_neg, float height, float width, float xpos, float ypos,
+                          const char *label_pos, const char *label_neg, float increment, float y_spacing){
+    Add_Button(id_pos, height, width, xpos, ypos, label_pos, increment);
+    Add_Button(id_neg, height, width, xpos, ypos + height + y_spacing, label_neg, -increment);
+}
+
+bool app::Ret_Button_Pair(int id_pos, int id_neg, float &value, float &delta){
+    float prev = value;
+    bool pressed = false;
+
+    if(Ret_Button(id_pos, value)){ pressed = true; }
+    if(Ret_Button(id_neg, value)){ pressed = true; }
+
+    if(pressed){
+        delta = value - prev;
+        return true;
+    }
+
+    return false;
 }
 
 void app::Rem_Button(int id){
     if(!buttons.empty()){
         for(std::vector<App_Button>::size_type it = 0; it < buttons.size(); it++){
-            if(buttons.at(it).id == id){
+            if(buttons[it].id == id){
                 buttons.erase(buttons.begin() + it);
                 it--;
             }
@@ -40,12 +79,34 @@ void app::Rem_Button(int id){
 bool app::Ret_Button(int id){
     if(!buttons.empty()){
         for(std::vector<App_Button>::size_type it = 0; it < buttons.size(); it++){
-            if(buttons.at(it).id == id){
-                return buttons.at(it).state;
+            if(buttons[it].id == id){
+                return buttons[it].state;
             }
         }
     }
     return 0;
+}
+
+bool app::Ret_Button(int id, float &value){
+    if(!buttons.empty()){
+        for(std::vector<App_Button>::size_type it = 0; it < buttons.size(); it++){
+            if(buttons[it].id == id){
+                value += buttons[it].increment;
+                return buttons[it].state;
+            }
+        }
+    }
+    return 0;
+}
+
+void app::Set_Button_Defaults(float height, float width, float xpos, float ypos){
+    if(height != -1.0f){default_height = height;}
+
+    if(width != -1.0f){default_width = width;}
+
+    if(xpos != -1.0f){default_xpos = xpos;}
+
+    if(ypos != -1.0f){default_ypos = ypos;}
 }
 
 int app::CNT_Buttons(){

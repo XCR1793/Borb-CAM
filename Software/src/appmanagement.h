@@ -20,6 +20,7 @@ struct App_Button{
     float ypos = 10.0f;
     const char*text = "Click Me";
     bool state = 0;
+    float increment = 0;
 };
 
 class app{
@@ -33,11 +34,26 @@ class app{
 
     void Add_Button(int id); // Add Button
 
+    void Add_Button(int id, float xpos, float ypos, const char *text); // Add Button
+
+    void Add_Button(int id, float xpos, float ypos, const char *text,  float increment); // Add Button
+
     void Add_Button(int id, float height, float width, float xpos, float ypos, const char *text); // Add Button
+
+    void Add_Button(int id, float height, float width, float xpos, float ypos, const char *text, float increment); // Add Button
+
+    void Add_Button_Pair(int id_pos, int id_neg, float height, float width, float xpos, float ypos,
+                        const char *label_pos, const char *label_neg, float increment, float y_spacing = 5.0f); // Add Button Pair with Spacing
+
+    bool Ret_Button_Pair(int id_pos, int id_neg, float &value, float &delta); // Return Button Pair State & Apply Increment
 
     void Rem_Button(int id); // Remove Button
 
     bool Ret_Button(int id); // Return Button State
+
+    bool Ret_Button(int id, float &value); // Return Button State
+
+    void Set_Button_Defaults(float height, float width, float xpos, float ypos); // Set Default Values for Buttons
 
     int CNT_Buttons(); // Return a count of Buttons Loaded
 
@@ -80,6 +96,7 @@ class app{
     Camera Internal_Camera = {0};
     std::string default_file_path;
     long line = 0;
+    float default_height, default_width, default_xpos, default_ypos;
 
     /**##########################################
      * #            General Functions           #

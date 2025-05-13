@@ -484,13 +484,6 @@ int main(){
             }
         }
 
-
-
-        // Connect bounding box hit points
-        // for (size_t i = 0; i + 1 < bboxHitPoints.size(); ++i) {
-        //     DrawLine3D(bboxHitPoints[i], bboxHitPoints[i + 1], DARKGREEN);
-        // }
-
             EndMode3D();
         }
 
