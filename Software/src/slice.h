@@ -37,11 +37,14 @@ class slice{
      * #            Algorithms Tools            #
      * ##########################################*/
 
-    // TSP Selector
+    // TSP Algorithm: Selector
     std::vector<Line> TSP(std::vector<Point> points, TSP_Types tsp);
 
-    // TSP Nearest Neighbor
+    // TSP Algorithm: Nearest Neighbor
     std::vector<Line> Generate_TSP_Lines_FromPoints(std::vector<Point> points);
+
+    // TSP Optimiser: 2-opt
+    
     
     /**##########################################
      * #              Slicing Tools             #

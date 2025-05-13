@@ -16,7 +16,15 @@ void app::Initialise_Window(int height, int width, int fps, const char *title, c
 
 void app::Add_Button(int id){
     if(!ID_Check(id, buttons)){
-        buttons.push_back((App_Button){});
+        buttons.push_back((App_Button){.id = id});
+    }
+}
+
+void app::Add_Button(int id, const char *text){
+    if(!ID_Check(id, buttons)){
+        buttons.push_back((App_Button){.id = id, .xpos = xpos_current, .ypos = ypos_current, .text = text});
+        xpos_current += xpos_increment;
+        ypos_current += ypos_increment;
     }
 }
 
@@ -65,6 +73,42 @@ bool app::Ret_Button_Pair(int id_pos, int id_neg, float &value, float &delta){
     return false;
 }
 
+void app::Add_Button_Array(int start_id, int count, float height, float width, float xpos, float ypos,
+                           const char *label_prefix, float increment, float spacing_x, float spacing_y){
+    for(int i = 0; i < count; ++i){
+        char label[64];
+        sprintf(label, "%s%d", label_prefix, i);
+
+        float x_offset = xpos + i * spacing_x;
+        float y_offset = ypos + i * spacing_y;
+
+        if(!ID_Check(start_id + i, buttons)){
+            buttons.push_back((App_Button){start_id + i, height, width, x_offset, y_offset, label, 0, increment});
+        }
+    }
+}
+
+void app::Add_Button_Grid(int start_id, int rows, int cols, float height, float width, float xpos, float ypos,
+                          const char *label_prefix, float spacing_x, float spacing_y, float increment){
+    int id = start_id;
+
+    for(int y = 0; y < rows; ++y){
+        for(int x = 0; x < cols; ++x){
+            char label[64];
+            sprintf(label, "%s%d", label_prefix, id);
+
+            float x_offset = xpos + x * (width + spacing_x);
+            float y_offset = ypos + y * (height + spacing_y);
+
+            if(!ID_Check(id, buttons)){
+                buttons.push_back((App_Button){id, height, width, x_offset, y_offset, label, 0, increment});
+            }
+
+            id++;
+        }
+    }
+}
+
 void app::Rem_Button(int id){
     if(!buttons.empty()){
         for(std::vector<App_Button>::size_type it = 0; it < buttons.size(); it++){
@@ -99,14 +143,14 @@ bool app::Ret_Button(int id, float &value){
     return 0;
 }
 
-void app::Set_Button_Defaults(float height, float width, float xpos, float ypos){
+void app::Set_Button_Defaults(float height, float width, float xpos_increment, float ypos_increment){
     if(height != -1.0f){default_height = height;}
 
     if(width != -1.0f){default_width = width;}
 
-    if(xpos != -1.0f){default_xpos = xpos;}
+    if(xpos_increment != -1.0f){xpos_increment = xpos_increment;}
 
-    if(ypos != -1.0f){default_ypos = ypos;}
+    if(ypos_increment != -1.0f){ypos_increment = ypos_increment;}
 }
 
 int app::CNT_Buttons(){

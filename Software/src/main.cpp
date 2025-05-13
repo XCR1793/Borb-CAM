@@ -94,13 +94,23 @@ int main(){
     window.Initialise_Lights(shader);
     window.Create_File("src/Debug", "txt");
 
-    for(int i = 1; i <= 16; ++i){
-        int row = (i - 1) / 2, col = (i - 1) % 2;
-        const char* labels[] = { "X+", "X-", "Y+", "Y-", "Z+", "Z-", "S+", "S-", "A+", "A-", "B+", "B-", "C+", "C-", "O+", "O-" };
-        window.Add_Button(i, 20, 60, 30 + 50 * row, 100 + 50 * col, labels[i - 1]);
-    }
-
-    window.Add_Button(17, 20, 60, 75, 500, "Run");
+    window.Add_Button(1,  20, 60,  30, 100, "X+");
+    window.Add_Button(2,  20, 60, 120, 100, "X-");
+    window.Add_Button(3,  20, 60,  30, 150, "Y+");
+    window.Add_Button(4,  20, 60, 120, 150, "Y-");
+    window.Add_Button(5,  20, 60,  30, 200, "Z+");
+    window.Add_Button(6,  20, 60, 120, 200, "Z-");
+    window.Add_Button(7,  20, 60,  30, 250, "S+");
+    window.Add_Button(8,  20, 60, 120, 250, "S-");
+    window.Add_Button(9,  20, 60,  30, 300, "A+");
+    window.Add_Button(10, 20, 60, 120, 300, "A-");
+    window.Add_Button(11, 20, 60,  30, 350, "B+");
+    window.Add_Button(12, 20, 60, 120, 350, "B-");
+    window.Add_Button(13, 20, 60,  30, 400, "C+");
+    window.Add_Button(14, 20, 60, 120, 400, "C-");
+    window.Add_Button(15, 20, 60,  30, 450, "O+");
+    window.Add_Button(16, 20, 60, 120, 450, "O-");
+    window.Add_Button(17, 20, 60,  75, 500, "Run");
     window.Add_Button(18, 20, 120, 75, 525, "Hide Model");
     window.Add_Button(19, 20, 120, 75, 550, "Enable Rays");
     window.Add_Button(20, 20, 100, 75, 575, "Slice to G-code");
@@ -112,7 +122,6 @@ int main(){
     window.Add_Button(26, 20, 160, 75, 725, "Hide lastPoint");
     window.Add_Button(27, 20, 160, 75, 750, "Randomise Points");
     window.Add_Button(28, 20, 160, 75, 775, "Apply TSP");
-
 
 
     mesh models;
@@ -139,6 +148,9 @@ int main(){
     float sliceAngleA = 0.0f;
     float sliceAngleB = 0.0f;
     int rotationMode = 0;
+
+    // Persistent cull box (used for intersection filtering, ray hit detection, etc.)
+    BoundingBox cullBox = { Vector3{-2, -4, -2}, Vector3{2, 0, 2} };
 
     std::vector<Line> intersectionList;
 
@@ -213,11 +225,18 @@ int main(){
                 }
                 i += slice_size;
             }
+        
+            // ➕ Optimize the random starting points using 2-opt
+            TwoOptOptimizePoints(sliceLastPoints);
         }
 
+
         if(window.Ret_Button(28)){
+            // ➕ Optimize point order before generating TSP lines
+            TwoOptOptimizePoints(sliceLastPoints);
             tspLines = slicing.Generate_TSP_Lines_FromPoints(sliceLastPoints);
-        }
+        }       
+
 
 
         if(window.Ret_Button(17)){
@@ -254,127 +273,195 @@ int main(){
 
             xk = yk = zk = ak = bk = ck = 0;
             sk = 1;
+if (runSlice) {
+    intersectionList.clear();
+    sliceLastPoints.clear();
 
-            if (runSlice) {
-                intersectionList.clear();
-                sliceLastPoints.clear();
-            
-                std::vector<std::vector<Line>> allSlices;
-                std::vector<float> sliceHeights;
-            
-                for (float i = -4; i <= 4; i += slice_size) {
-                    Vector3 coefficients = slicing.rotation_coefficient(sliceAngleA, sliceAngleB);
-                    std::vector<Line> result = models.Intersect_Model(currentmodel.model, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
-                
-                    if (!result.empty() && !intersectionList.empty()) {
-                        auto last = intersectionList.back();
-                        intersectionList.push_back((Line){
-                            .startLinePoint = last.endLinePoint,
-                            .endLinePoint   = result.front().startLinePoint,
-                            .type = 2
-                        });
-                    }
-                
-                    if (!result.empty()) {
-                        allSlices.push_back(result);
-                        sliceHeights.push_back(i);
-                    }
-                
-                    intersectionList.insert(intersectionList.end(), result.begin(), result.end());
-                }
-            
-                // Optimized TSP-style chaining
-                std::vector<std::pair<int, Point>> indexedPoints;
-                for (int i = 0; i < (int)allSlices.size(); ++i) {
-                    Point p = models.lastPoint(allSlices[i], 0, true);
-                    indexedPoints.push_back({ i, p });
-                }
+    std::vector<std::vector<Line>> allSlices;
+    std::vector<float> sliceHeights;
 
-                // Manual 2-opt with index preservation
-                bool improved = true;
-                while (improved) {
-                    improved = false;
-                    for (size_t i = 1; i < indexedPoints.size() - 2; ++i) {
-                        for (size_t k = i + 1; k < indexedPoints.size() - 1; ++k) {
-                            auto newPath = indexedPoints;
-                            int a = i, b = k;
-                            while (a < b) {
-                                std::swap(newPath[a], newPath[b]);
-                                a++;
-                                b--;
-                            }
-                        
-                            float oldLen = 0.0f, newLen = 0.0f;
-                            for (size_t j = 1; j < indexedPoints.size(); ++j)
-                                oldLen += Vector3Distance(indexedPoints[j - 1].second.Position, indexedPoints[j].second.Position);
-                            for (size_t j = 1; j < newPath.size(); ++j)
-                                newLen += Vector3Distance(newPath[j - 1].second.Position, newPath[j].second.Position);
-                        
-                            if (newLen < oldLen) {
-                                indexedPoints = newPath;
-                                improved = true;
-                            }
-                        }
-                    }
-                }
+    BoundingBox cullBox = { Vector3{-2, -4, -2}, Vector3{2, 0, 2} };
 
-                // Extract reordered slice points
-                sliceLastPoints.clear();
-                for (size_t i = 0; i < indexedPoints.size(); ++i) {
-                    int sliceIdx = indexedPoints[i].first;
-                    const std::vector<Line>& slice = allSlices[sliceIdx];
-                
-                    int bestStart = 0;
-                    if (!sliceLastPoints.empty()) {
-                        const Point& prev = sliceLastPoints.back();
+    for (float i = -4; i <= 4; i += slice_size) {
+        Vector3 coefficients = slicing.rotation_coefficient(sliceAngleA, sliceAngleB);
+        std::vector<Line> result = models.Intersect_Model(currentmodel.model, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
+        std::vector<Line> culled = models.Cull_Lines_ByBox(cullBox, result);
 
-                        BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[0]);
-
-                        float bestScore = FLT_MAX;
-                        int bestStart = 0;
-                        float w1 = 0.7f, w2 = 0.3f;
-                                            
-                        for (int j = 0; j < (int)slice.size(); ++j) {
-                            Point candidate = models.lastPoint(slice, j, true);
-                        
-                            float distPos = 0.0f, distHit = 0.0f;
-                        
-                            if (!sliceLastPoints.empty()) {
-                                const Point& prev = sliceLastPoints.back();
-                            
-                                distPos = Vector3Distance(prev.Position, candidate.Position);
-                            
-                                Vector3 prevHit, currHit;
-                                Vector3 prevDir = Vector3Negate(Vector3Normalize(prev.Normal));
-                                Vector3 currDir = Vector3Negate(Vector3Normalize(candidate.Normal));
-                            
-                                if (models.RayIntersectsAABB(prev.Position, prevDir, bbox, &prevHit) &&
-                                    models.RayIntersectsAABB(candidate.Position, currDir, bbox, &currHit)) {
-                                    distHit = Vector3Distance(prevHit, currHit);
-                                } else {
-                                    distHit = distPos * 2.0f; // fallback penalty
-                                }
-                            }
-                        
-                            float score = w1 * distPos + w2 * distHit;
-                        
-                            if (score < bestScore) {
-                                bestScore = score;
-                                bestStart = j;
-                            }
-                        }
-
-
-                    }
-                
-                    sliceLastPoints.push_back(models.lastPoint(slice, bestStart, true));
-                }
-
-
-
-            
-                runSlice = false;
+        if (!culled.empty()) {
+            if (!intersectionList.empty()) {
+                auto last = intersectionList.back();
+                intersectionList.push_back((Line){
+                    .startLinePoint = last.endLinePoint,
+                    .endLinePoint   = culled.front().startLinePoint,
+                    .type = 2
+                });
             }
+
+            allSlices.push_back(culled);
+            sliceHeights.push_back(i);
+            intersectionList.insert(intersectionList.end(), culled.begin(), culled.end());
+        }
+    }
+
+    std::vector<Line> rayLines;
+    for (const Line& line : intersectionList) {
+        if (line.type != 1) continue;
+
+        int meshIndex = line.meshNo;
+        if (meshIndex < 0 || meshIndex >= currentmodel.model.meshCount) continue;
+
+        BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[meshIndex]);
+        Vector3 origin = line.startLinePoint.Position;
+        Vector3 dir = Vector3Negate(Vector3Normalize(line.startLinePoint.Normal));
+        if (Vector3Length(dir) < 0.0001f) continue;
+
+        Vector3 hit;
+        if (models.RayIntersectsAABB(origin, dir, bbox, &hit)) {
+            rayLines.push_back((Line){
+                .startLinePoint = { origin, line.startLinePoint.Normal },
+                .endLinePoint   = { hit,    line.startLinePoint.Normal },
+                .type           = 1,
+                .meshNo         = meshIndex,
+                .islandNo       = line.islandNo
+            });
+        }
+    }
+
+    std::vector<Line> processedRayLines;
+    for (const Line& ray : rayLines) {
+        std::vector<Line> raySet = { ray };
+        for (int j = 0; j < currentmodel.model.meshCount; j++) {
+            if (j == ray.meshNo) continue;
+            BoundingBox otherBox = GetMeshBoundingBox(currentmodel.model.meshes[j]);
+            raySet = models.Cull_Lines_ByBox(otherBox, raySet);
+            if (raySet.empty()) break;
+        }
+        processedRayLines.insert(processedRayLines.end(), raySet.begin(), raySet.end());
+    }
+
+    finalRayLines = models.Cull_Lines_ByBox(cullBox, processedRayLines);
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // ░░ 2-OPT SEQUENCE OPTIMIZATION ░░
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    struct SliceEntry {
+        int sliceIndex;
+        int startIndex;
+    };
+
+    std::vector<SliceEntry> sequence;
+    for (int i = 0; i < (int)allSlices.size(); ++i)
+        sequence.push_back({ i, 0 });
+
+    BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[0]);
+    std::vector<Point> pointCache(sequence.size());
+    for (size_t i = 0; i < sequence.size(); ++i) {
+        pointCache[i] = models.lastPoint(allSlices[sequence[i].sliceIndex], 0, true);
+    }
+
+    auto CostBetween = [&](size_t idxA, size_t idxB) -> float {
+        const Point& A = pointCache[idxA];
+        const Point& B = pointCache[idxB];
+
+        float dPos = Vector3Distance(A.Position, B.Position);
+
+        Vector3 dirA = Vector3Negate(Vector3Normalize(A.Normal));
+        Vector3 dirB = Vector3Negate(Vector3Normalize(B.Normal));
+
+        Vector3 hitA, hitB;
+        float dHit = (models.RayIntersectsAABB(A.Position, dirA, bbox, &hitA) &&
+                      models.RayIntersectsAABB(B.Position, dirB, bbox, &hitB))
+                    ? Vector3Distance(hitA, hitB)
+                    : dPos * 2.0f;
+
+        return dPos * 0.7f + dHit * 0.3f;
+    };
+
+    bool improved = true;
+    int iter = 0;
+    const int maxIter = 100;
+    const float minDelta = 0.01f;
+
+    while (improved && iter++ < maxIter) {
+        improved = false;
+
+        for (size_t i = 1; i < sequence.size() - 2; ++i) {
+            for (size_t k = i + 2; k < sequence.size() - 1; ++k) {
+                float before = CostBetween(i - 1, i) + CostBetween(k, k + 1);
+
+                std::vector<SliceEntry> temp = sequence;
+                int a = i, b = k;
+                while (a < b) {
+                    std::swap(temp[a], temp[b]);
+                    a++;
+                    b--;
+                }
+
+                for (size_t t = i; t <= k; ++t) {
+                    pointCache[t] = models.lastPoint(allSlices[temp[t].sliceIndex], 0, true);
+                }
+
+                float after = CostBetween(i - 1, i) + CostBetween(k, k + 1);
+
+                if (before - after > minDelta) {
+                    sequence = temp;
+                    improved = true;
+                    goto restart_2opt;
+                }
+            }
+        }
+
+    restart_2opt:
+        continue;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // ░░ Final best start point per optimized slice ░░
+    // ─────────────────────────────────────────────────────────────────────────────
+    sliceLastPoints.clear();
+    Point prevPoint;
+
+    for (size_t i = 0; i < sequence.size(); ++i) {
+        const auto& slice = allSlices[sequence[i].sliceIndex];
+
+        int bestStart = 0;
+        float bestScore = FLT_MAX;
+
+        for (int j = 0; j < (int)slice.size(); ++j) {
+            Point candidate = models.lastPoint(slice, j, true);
+            float distPos = (i > 0) ? Vector3Distance(prevPoint.Position, candidate.Position) : 0.0f;
+            float distHit = 0.0f;
+
+            if (i > 0) {
+                Vector3 dirA = Vector3Negate(Vector3Normalize(prevPoint.Normal));
+                Vector3 dirB = Vector3Negate(Vector3Normalize(candidate.Normal));
+
+                Vector3 hitA, hitB;
+                if (models.RayIntersectsAABB(prevPoint.Position, dirA, bbox, &hitA) &&
+                    models.RayIntersectsAABB(candidate.Position, dirB, bbox, &hitB)) {
+                    distHit = Vector3Distance(hitA, hitB);
+                } else {
+                    distHit = distPos * 2.0f;
+                }
+            }
+
+            float score = distPos * 0.7f + distHit * 0.3f;
+            if (score < bestScore) {
+                bestScore = score;
+                bestStart = j;
+            }
+        }
+
+        Point best = models.lastPoint(slice, bestStart, true);
+        sliceLastPoints.push_back(best);
+        prevPoint = best;
+    }
+
+    TwoOptOptimizePoints(sliceLastPoints);
+    runSlice = false;
+}
+
 
 
             BeginMode3D(camera);
@@ -483,6 +570,19 @@ int main(){
                 }
             }
         }
+
+// if (generateRays) {
+//     for (const Line& line : finalRayLines) {
+//         DrawSphere(line.startLinePoint.Position, 0.01f, BLUE);
+//         DrawSphere(line.endLinePoint.Position, 0.01f, RED);
+//         DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, GREEN);
+//     }
+// }
+
+
+        DrawCube((Vector3){0, -2, 0}, 4, 4, 4, (Color){255, 0, 0, 51});
+        DrawBoundingBox(cullBox, RED);
+
 
             EndMode3D();
         }

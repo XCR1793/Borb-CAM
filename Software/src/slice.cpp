@@ -23,8 +23,6 @@ std::vector<Line> slice::TSP(std::vector<Point> points, TSP_Types tsp){
     }
 }
 
-
-
 // TSP Nearest Neighbor
 std::vector<Line> slice::Generate_TSP_Lines_FromPoints(std::vector<Point> points){
     std::vector<Line> tspLines;
@@ -77,8 +75,6 @@ std::vector<Line> slice::Generate_TSP_Lines_FromPoints(std::vector<Point> points
 vectors_per_model slice::model_path(Model model){
     return vectors_per_model{};
 }
-
-
 
 // Function to Slice
 bool slice::Slice(){};

@@ -34,6 +34,8 @@ class app{
 
     void Add_Button(int id); // Add Button
 
+    void Add_Button(int id, const char *text); // Add Button
+
     void Add_Button(int id, float xpos, float ypos, const char *text); // Add Button
 
     void Add_Button(int id, float xpos, float ypos, const char *text,  float increment); // Add Button
@@ -45,6 +47,12 @@ class app{
     void Add_Button_Pair(int id_pos, int id_neg, float height, float width, float xpos, float ypos,
                         const char *label_pos, const char *label_neg, float increment, float y_spacing = 5.0f); // Add Button Pair with Spacing
 
+    void Add_Button_Array(int start_id, int count, float height, float width, float xpos, float ypos,
+                          const char* label_prefix, float increment = 0, float spacing_x = 0, float spacing_y = 0);
+
+    void Add_Button_Grid(int start_id, int rows, int cols, float height, float width, float xpos, float ypos,
+                              const char *label_prefix, float spacing_x, float spacing_y, float increment);
+
     bool Ret_Button_Pair(int id_pos, int id_neg, float &value, float &delta); // Return Button Pair State & Apply Increment
 
     void Rem_Button(int id); // Remove Button
@@ -53,7 +61,7 @@ class app{
 
     bool Ret_Button(int id, float &value); // Return Button State
 
-    void Set_Button_Defaults(float height, float width, float xpos, float ypos); // Set Default Values for Buttons
+    void Set_Button_Defaults(float height, float width, float xpos_increment, float ypos_increment); // Set Default Values for Buttons
 
     int CNT_Buttons(); // Return a count of Buttons Loaded
 
@@ -96,7 +104,8 @@ class app{
     Camera Internal_Camera = {0};
     std::string default_file_path;
     long line = 0;
-    float default_height, default_width, default_xpos, default_ypos;
+    float default_height, default_width, xpos_increment, ypos_increment;
+    float xpos_current, ypos_current;
 
     /**##########################################
      * #            General Functions           #
