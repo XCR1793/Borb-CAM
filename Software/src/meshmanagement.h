@@ -129,21 +129,11 @@ class mesh{
 
     bool CheckCollisionPointBox(Vector3 point, BoundingBox box);
 
-    std::vector<Line> Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines);
+    std::vector<Line> Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines); // REDO
 
     float pointToPointDistance(Vector3 StartPoint, Vector3 EndPoint);
 
-    float distancePoint(std::vector<Line> lineList);
-
     Point lastPoint(std::vector<Line> lineList, int startNo, bool direction);
-
-    // Everything below here currently doesnt work (Trim function doesnt work properly)
-    bool IsPointInsideMesh(Vector3 point, const std::vector<Triangle>& triangles);
-
-    std::vector<Triangle> Flatten_Triangles_Excluding(Model model, int excludeMesh);
-
-    std::vector<Line> Trim_Lines_ByModel(Model model, const std::vector<Line> &lines);
-    // Everything above here currently doesnt work (Trim function doesnt work properly)
 
     private:
 

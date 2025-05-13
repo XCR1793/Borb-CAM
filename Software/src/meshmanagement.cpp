@@ -479,42 +479,120 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
 }
 
 bool mesh::CheckCollisionPointBox(Vector3 point, BoundingBox box){
-    return (point.x >= box.min.x && point.x <= box.max.x) &&
-           (point.y >= box.min.y && point.y <= box.max.y) &&
-           (point.z >= box.min.z && point.z <= box.max.z);
+    const float epsilon = 1e-6f;
+
+    return (point.x > box.min.x + epsilon && point.x < box.max.x - epsilon) &&
+           (point.y > box.min.y + epsilon && point.y < box.max.y - epsilon) &&
+           (point.z > box.min.z + epsilon && point.z < box.max.z - epsilon);
 }
 
 std::vector<Line> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line> &lines){
     std::vector<Line> result;
+    const float epsilon = 1e-6f;
 
-    for(int i = 0; i < lines.size(); i++){
-        Vector3 a = lines[i].startLinePoint.Position;
-        Vector3 b = lines[i].endLinePoint.Position;
+    for(const Line &line : lines){
+        Vector3 a = line.startLinePoint.Position;
+        Vector3 b = line.endLinePoint.Position;
 
         bool aInside = CheckCollisionPointBox(a, box);
         bool bInside = CheckCollisionPointBox(b, box);
 
-        if(!aInside && !bInside){
-            result.push_back(lines[i]);
-        }else if(aInside && bInside){
+        // Case 1: Fully inside — discard
+        if(aInside && bInside){
             continue;
-        }else{
-            Vector3 outside = aInside ? b : a;
-            Vector3 inside  = aInside ? a : b;
-            Vector3 dir     = Vector3Normalize(Vector3Subtract(inside, outside));
+        }
 
-            Vector3 intersection;
-            if(RayIntersectsAABB(outside, dir, box, &intersection)){
-                Line clipped = lines[i];
-                if(aInside){
-                    clipped.startLinePoint.Position = intersection;
-                    clipped.endLinePoint.Position   = b;
+        // Case 2: Fully outside — check if it intersects box
+        if(!aInside && !bInside){
+            Vector3 dir = Vector3Subtract(b, a);
+            float tmin = 0.0f;
+            float tmax = 1.0f;
+            bool intersects = true;
+
+            for(int i = 0; i < 3; i++){
+                float p0   = ((float*)&a)[i];
+                float d    = ((float*)&dir)[i];
+                float minB = ((float*)&box.min)[i];
+                float maxB = ((float*)&box.max)[i];
+
+                if(fabsf(d) < epsilon){
+                    if(p0 < minB || p0 > maxB){
+                        intersects = false;
+                        break;
+                    }
                 }else{
-                    clipped.startLinePoint.Position = a;
-                    clipped.endLinePoint.Position   = intersection;
+                    float t0 = (minB - p0) / d;
+                    float t1 = (maxB - p0) / d;
+                    if(t0 > t1) std::swap(t0, t1);
+                    if(t0 > tmin) tmin = t0;
+                    if(t1 < tmax) tmax = t1;
+                    if(tmin > tmax){
+                        intersects = false;
+                        break;
+                    }
                 }
-                result.push_back(clipped);
             }
+
+            if(intersects){
+                Vector3 newStart = Vector3Add(a, Vector3Scale(dir, tmin));
+                Vector3 newEnd   = Vector3Add(a, Vector3Scale(dir, tmax));
+                result.push_back((Line){
+                    .startLinePoint = { newStart, line.startLinePoint.Normal },
+                    .endLinePoint   = { newEnd,   line.endLinePoint.Normal },
+                    .type           = line.type,
+                    .meshNo         = line.meshNo,
+                    .islandNo       = line.islandNo
+                });
+            }else{
+                // Just preserve the full outside line as-is
+                result.push_back(line);
+            }
+
+            continue;
+        }
+
+        // Case 3: One point inside — clip from outside to box
+        Vector3 outside = aInside ? b : a;
+        Vector3 inside  = aInside ? a : b;
+        Vector3 dir     = Vector3Subtract(inside, outside);
+
+        float tmin = 0.0f;
+        float tmax = 1.0f;
+        bool intersects = true;
+
+        for(int i = 0; i < 3; i++){
+            float p0   = ((float*)&outside)[i];
+            float d    = ((float*)&dir)[i];
+            float minB = ((float*)&box.min)[i];
+            float maxB = ((float*)&box.max)[i];
+
+            if(fabsf(d) < epsilon){
+                if(p0 < minB || p0 > maxB){
+                    intersects = false;
+                    break;
+                }
+            }else{
+                float t0 = (minB - p0) / d;
+                float t1 = (maxB - p0) / d;
+                if(t0 > t1) std::swap(t0, t1);
+                if(t0 > tmin) tmin = t0;
+                if(t1 < tmax) tmax = t1;
+                if(tmin > tmax){
+                    intersects = false;
+                    break;
+                }
+            }
+        }
+
+        if(intersects){
+            Vector3 clippedPoint = Vector3Add(outside, Vector3Scale(dir, tmin));
+            result.push_back((Line){
+                .startLinePoint = { aInside ? a : clippedPoint, line.startLinePoint.Normal },
+                .endLinePoint   = { aInside ? clippedPoint : b, line.endLinePoint.Normal },
+                .type           = line.type,
+                .meshNo         = line.meshNo,
+                .islandNo       = line.islandNo
+            });
         }
     }
 
@@ -526,14 +604,6 @@ float mesh::pointToPointDistance(Vector3 StartPoint, Vector3 EndPoint){
     float dy = EndPoint.y - StartPoint.y;
     float dz = EndPoint.z - StartPoint.z;
     return sqrtf(dx*dx + dy*dy + dz*dz);
-}
-
-float mesh::distancePoint(std::vector<Line> lineList){
-    float distance = 0;
-    for(auto line : lineList){
-        distance += pointToPointDistance(PointToVec3(line.startLinePoint), PointToVec3(line.endLinePoint));
-    }
-    return distance;
 }
 
 Point mesh::lastPoint(std::vector<Line> lineList, int startNo, bool direction){
@@ -562,147 +632,6 @@ Point mesh::lastPoint(std::vector<Line> lineList, int startNo, bool direction){
 
     return expected;
 }
-
-
-
-bool mesh::IsPointInsideMesh(Vector3 point, const std::vector<Triangle>& triangles){
-    Vector3 rayDir = {1.0f, 0.123f, 0.456f}; // Skewed to avoid edge cases
-    int hitCount = 0;
-
-    for(const Triangle& tri : triangles){
-        Vector3 v0 = tri.Vertex1.Position;
-        Vector3 v1 = tri.Vertex2.Position;
-        Vector3 v2 = tri.Vertex3.Position;
-
-        Vector3 e1 = Vector3Subtract(v1, v0);
-        Vector3 e2 = Vector3Subtract(v2, v0);
-        Vector3 h  = Vector3CrossProduct(rayDir, e2);
-        float a    = Vector3DotProduct(e1, h);
-
-        if(fabs(a) < 0.00001f) continue;
-
-        float f = 1.0f / a;
-        Vector3 s = Vector3Subtract(point, v0);
-        float u = f * Vector3DotProduct(s, h);
-        if(u < 0.0f || u > 1.0f) continue;
-
-        Vector3 q = Vector3CrossProduct(s, e1);
-        float v = f * Vector3DotProduct(rayDir, q);
-        if(v < 0.0f || u + v > 1.0f) continue;
-
-        float t = f * Vector3DotProduct(e2, q);
-        if(t > 0.0001f) hitCount++;
-    }
-
-    return (hitCount % 2) == 1;
-}
-
-std::vector<Triangle> mesh::Flatten_Triangles_Excluding(Model model, int excludeMesh){
-    std::vector<Triangle> result;
-    std::vector<std::vector<std::pair<int, Triangle>>> tris = List_Triangles(model);
-
-    for(int i = 0; i < tris.size(); i++){
-        if(i == excludeMesh) continue;
-        for(auto &pair : tris[i]){
-            result.push_back(pair.second);
-        }
-    }
-
-    return result;
-}
-
-std::vector<Line> mesh::Trim_Lines_ByModel(Model model, const std::vector<Line> &lines){
-    std::vector<Line> result;
-
-    std::vector<Triangle> triangles;
-    std::vector<std::vector<std::pair<int, Triangle>>> tris = List_Triangles(model);
-    for(auto &meshTris : tris){
-        for(auto &pair : meshTris){
-            triangles.push_back(pair.second);
-        }
-    }
-
-    for(const Line &line : lines){
-        Vector3 a = line.startLinePoint.Position;
-        Vector3 b = line.endLinePoint.Position;
-
-        bool aInside = IsPointInsideMesh(a, triangles);
-        bool bInside = IsPointInsideMesh(b, triangles);
-
-        if(!aInside && !bInside){
-            result.push_back(line);
-            continue;
-        }
-
-        if(aInside && bInside){
-            continue;
-        }
-
-        Vector3 outside = aInside ? b : a;
-        Vector3 inside  = aInside ? a : b;
-        Vector3 dir     = Vector3Normalize(Vector3Subtract(inside, outside));
-
-        float closestDist = FLT_MAX;
-        Point hitPoint = {};
-
-        for(const Triangle &tri : triangles){
-            Vector3 edge1 = Vector3Subtract(tri.Vertex2.Position, tri.Vertex1.Position);
-            Vector3 edge2 = Vector3Subtract(tri.Vertex3.Position, tri.Vertex1.Position);
-            Vector3 normal = Vector3Normalize(Vector3CrossProduct(edge1, edge2));
-
-            float d = Vector3DotProduct(normal, tri.Vertex1.Position);
-
-            std::pair<Point, bool> intersect = IntersectLinePlane(
-                (Vector4){ normal.x, normal.y, normal.z, d },
-                { outside, {} },
-                { inside,  {} }
-            );
-
-            if(!intersect.second){continue;}
-
-            Vector3 v0 = edge1;
-            Vector3 v1 = edge2;
-            Vector3 v2 = Vector3Subtract(intersect.first.Position, tri.Vertex1.Position);
-
-            float d00 = Vector3DotProduct(v0, v0);
-            float d01 = Vector3DotProduct(v0, v1);
-            float d11 = Vector3DotProduct(v1, v1);
-            float d20 = Vector3DotProduct(v2, v0);
-            float d21 = Vector3DotProduct(v2, v1);
-
-            float denom = d00 * d11 - d01 * d01;
-            if(denom == 0){continue;}
-
-            float v = (d11 * d20 - d01 * d21) / denom;
-            float w = (d00 * d21 - d01 * d20) / denom;
-            float u = 1.0f - v - w;
-
-            if(u >= 0.0f && v >= 0.0f && w >= 0.0f){
-                float dist = Vector3LengthSqr(Vector3Subtract(intersect.first.Position, outside));
-                if(dist < closestDist){
-                    closestDist = dist;
-                    hitPoint = intersect.first;
-                }
-            }
-        }
-
-        if(closestDist < FLT_MAX){
-            Line trimmed = line;
-            if(aInside){
-                trimmed.startLinePoint = hitPoint;
-                trimmed.endLinePoint   = line.endLinePoint;
-            }else{
-                trimmed.startLinePoint = line.startLinePoint;
-                trimmed.endLinePoint   = hitPoint;
-            }
-            result.push_back(trimmed);
-        }
-    }
-
-    return result;
-}
-
-
 
 /**##########################################
  * #            Private Functions           #
