@@ -490,105 +490,79 @@ std::vector<Line> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line
     std::vector<Line> result;
     const float epsilon = 1e-6f;
 
+    auto clipLineToBox = [&](Vector3 p0, Vector3 p1, float &tmin, float &tmax) -> bool {
+        Vector3 dir = Vector3Subtract(p1, p0);
+        tmin = 0.0f;
+        tmax = 1.0f;
+
+        for(int i = 0; i < 3; i++){
+            float start = ((float*)&p0)[i];
+            float d     = ((float*)&dir)[i];
+            float minB  = ((float*)&box.min)[i];
+            float maxB  = ((float*)&box.max)[i];
+
+            if(fabsf(d) < epsilon){
+                if(start < minB || start > maxB) return false;
+            }else{
+                float t0 = (minB - start) / d;
+                float t1 = (maxB - start) / d;
+                if(t0 > t1) std::swap(t0, t1);
+                if(t0 > tmin) tmin = t0;
+                if(t1 < tmax) tmax = t1;
+                if(tmin > tmax) return false;
+            }
+        }
+
+        return true;
+    };
+
     for(const Line &line : lines){
         Vector3 a = line.startLinePoint.Position;
         Vector3 b = line.endLinePoint.Position;
 
-        bool aInside = CheckCollisionPointBox(a, box);
-        bool bInside = CheckCollisionPointBox(b, box);
+        float fullLength = pointToPointDistance(a, b);
+        float tmin, tmax;
 
-        // Case 1: Fully inside — discard
-        if(aInside && bInside){
+        if(!clipLineToBox(a, b, tmin, tmax)){
+            // Entire line is outside box — keep it
+            result.push_back(line);
             continue;
         }
 
-        // Case 2: Fully outside — check if it intersects box
-        if(!aInside && !bInside){
-            Vector3 dir = Vector3Subtract(b, a);
-            float tmin = 0.0f;
-            float tmax = 1.0f;
-            bool intersects = true;
+        // We now know the segment between [tmin, tmax] is inside the box
+        // So we keep 0 to tmin (before entering) and tmax to 1 (after exiting)
+        if(tmin > epsilon){
+            Vector3 start = a;
+            Vector3 end = Vector3Add(a, Vector3Scale(Vector3Subtract(b, a), tmin));
+            float t = tmin;
 
-            for(int i = 0; i < 3; i++){
-                float p0   = ((float*)&a)[i];
-                float d    = ((float*)&dir)[i];
-                float minB = ((float*)&box.min)[i];
-                float maxB = ((float*)&box.max)[i];
+            Vector3 n = Vector3Normalize(Vector3Add(
+                Vector3Scale(line.startLinePoint.Normal, 1.0f - t),
+                Vector3Scale(line.endLinePoint.Normal, t)
+            ));
 
-                if(fabsf(d) < epsilon){
-                    if(p0 < minB || p0 > maxB){
-                        intersects = false;
-                        break;
-                    }
-                }else{
-                    float t0 = (minB - p0) / d;
-                    float t1 = (maxB - p0) / d;
-                    if(t0 > t1) std::swap(t0, t1);
-                    if(t0 > tmin) tmin = t0;
-                    if(t1 < tmax) tmax = t1;
-                    if(tmin > tmax){
-                        intersects = false;
-                        break;
-                    }
-                }
-            }
-
-            if(intersects){
-                Vector3 newStart = Vector3Add(a, Vector3Scale(dir, tmin));
-                Vector3 newEnd   = Vector3Add(a, Vector3Scale(dir, tmax));
-                result.push_back((Line){
-                    .startLinePoint = { newStart, line.startLinePoint.Normal },
-                    .endLinePoint   = { newEnd,   line.endLinePoint.Normal },
-                    .type           = line.type,
-                    .meshNo         = line.meshNo,
-                    .islandNo       = line.islandNo
-                });
-            }else{
-                // Just preserve the full outside line as-is
-                result.push_back(line);
-            }
-
-            continue;
-        }
-
-        // Case 3: One point inside — clip from outside to box
-        Vector3 outside = aInside ? b : a;
-        Vector3 inside  = aInside ? a : b;
-        Vector3 dir     = Vector3Subtract(inside, outside);
-
-        float tmin = 0.0f;
-        float tmax = 1.0f;
-        bool intersects = true;
-
-        for(int i = 0; i < 3; i++){
-            float p0   = ((float*)&outside)[i];
-            float d    = ((float*)&dir)[i];
-            float minB = ((float*)&box.min)[i];
-            float maxB = ((float*)&box.max)[i];
-
-            if(fabsf(d) < epsilon){
-                if(p0 < minB || p0 > maxB){
-                    intersects = false;
-                    break;
-                }
-            }else{
-                float t0 = (minB - p0) / d;
-                float t1 = (maxB - p0) / d;
-                if(t0 > t1) std::swap(t0, t1);
-                if(t0 > tmin) tmin = t0;
-                if(t1 < tmax) tmax = t1;
-                if(tmin > tmax){
-                    intersects = false;
-                    break;
-                }
-            }
-        }
-
-        if(intersects){
-            Vector3 clippedPoint = Vector3Add(outside, Vector3Scale(dir, tmin));
             result.push_back((Line){
-                .startLinePoint = { aInside ? a : clippedPoint, line.startLinePoint.Normal },
-                .endLinePoint   = { aInside ? clippedPoint : b, line.endLinePoint.Normal },
+                .startLinePoint = { start, line.startLinePoint.Normal },
+                .endLinePoint   = { end,   n },
+                .type           = line.type,
+                .meshNo         = line.meshNo,
+                .islandNo       = line.islandNo
+            });
+        }
+
+        if(tmax < 1.0f - epsilon){
+            Vector3 start = Vector3Add(a, Vector3Scale(Vector3Subtract(b, a), tmax));
+            Vector3 end = b;
+            float t = tmax;
+
+            Vector3 n = Vector3Normalize(Vector3Add(
+                Vector3Scale(line.startLinePoint.Normal, 1.0f - t),
+                Vector3Scale(line.endLinePoint.Normal, t)
+            ));
+
+            result.push_back((Line){
+                .startLinePoint = { start, n },
+                .endLinePoint   = { end,   line.endLinePoint.Normal },
                 .type           = line.type,
                 .meshNo         = line.meshNo,
                 .islandNo       = line.islandNo
