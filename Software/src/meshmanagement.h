@@ -117,6 +117,8 @@ class mesh{
 
     std::vector<Line> Chain_Walker(const std::vector<Line>& unordered);
 
+    std::vector<Line> Flatten_Culled_Lines(BoundingBox box, const std::vector<Line>& lines, bool in_out);
+
     /**##########################################
      * #       Mesh Manipulation Functions      #
      * ##########################################*/

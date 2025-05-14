@@ -286,13 +286,73 @@ Line mesh::Flip_Line(const Line& line){
     return flipped;
 }
 
+// std::pair<std::pair<Point, Point>, bool> mesh::Intersect_Line_Box(Point startPoint, Point endPoint, BoundingBox box){
+//     Vector3 p0   = startPoint.Position;
+//     Vector3 dir  = Vector3Subtract(endPoint.Position, p0);
+//     float tmin   = 0.0f;
+//     float tmax   = 1.0f;
+//     Vector3 enterNormal = {};
+//     Vector3 exitNormal  = {};
+
+//     for(int i = 0; i < 3; i++){
+//         float start = ((float*)&p0)[i];
+//         float d     = ((float*)&dir)[i];
+//         float minB  = ((float*)&box.min)[i];
+//         float maxB  = ((float*)&box.max)[i];
+
+//         if(fabsf(d) < 1e-6f){
+//             if(start < minB || start > maxB){
+//                 return {{{}, {}}, false};
+//             }
+//         }else{
+//             float t0 = (minB - start) / d;
+//             float t1 = (maxB - start) / d;
+
+//             Vector3 thisEnter = {};
+//             Vector3 thisExit  = {};
+//             ((float*)&thisEnter)[i] = (d > 0) ? -1.0f : 1.0f;
+//             ((float*)&thisExit)[i]  = (d > 0) ?  1.0f : -1.0f;
+
+//             if(t0 > t1){
+//                 std::swap(t0, t1);
+//                 std::swap(thisEnter, thisExit);
+//             }
+
+//             if(t0 > tmin){
+//                 tmin = t0;
+//                 enterNormal = thisEnter;
+//             }
+//             if(t1 < tmax){
+//                 tmax = t1;
+//                 exitNormal = thisExit;
+//             }
+
+//             if(tmin > tmax){
+//                 return {{{}, {}}, false};
+//             }
+//         }
+//     }
+
+//     if(tmin <= 1.0f && tmax >= 0.0f){
+//         Vector3 entryPos = Vector3Add(p0, Vector3Scale(dir, tmin));
+//         Vector3 exitPos  = Vector3Add(p0, Vector3Scale(dir, tmax));
+
+//         Point entry = { .Position = entryPos, .Normal = enterNormal };
+//         Point exit  = { .Position = exitPos,  .Normal = exitNormal };
+
+//         return {{ entry, exit }, true};
+//     }
+
+//     return {{{}, {}}, false};
+// }
+
 std::pair<std::pair<Point, Point>, bool> mesh::Intersect_Line_Box(Point startPoint, Point endPoint, BoundingBox box){
     Vector3 p0   = startPoint.Position;
     Vector3 dir  = Vector3Subtract(endPoint.Position, p0);
     float tmin   = 0.0f;
     float tmax   = 1.0f;
-    Vector3 enterNormal = {};
-    Vector3 exitNormal  = {};
+
+    float enterT = 0.0f, exitT = 1.0f;
 
     for(int i = 0; i < 3; i++){
         float start = ((float*)&p0)[i];
@@ -304,27 +364,18 @@ std::pair<std::pair<Point, Point>, bool> mesh::Intersect_Line_Box(Point startPoi
             if(start < minB || start > maxB){
                 return {{{}, {}}, false};
             }
-        }else{
+        } else {
             float t0 = (minB - start) / d;
             float t1 = (maxB - start) / d;
 
-            Vector3 thisEnter = {};
-            Vector3 thisExit  = {};
-            ((float*)&thisEnter)[i] = (d > 0) ? -1.0f : 1.0f;
-            ((float*)&thisExit)[i]  = (d > 0) ?  1.0f : -1.0f;
-
-            if(t0 > t1){
-                std::swap(t0, t1);
-                std::swap(thisEnter, thisExit);
-            }
-
-            if(t0 > tmin){
+            if(t0 > t1) std::swap(t0, t1);
+            if(t0 > tmin) {
                 tmin = t0;
-                enterNormal = thisEnter;
+                enterT = t0;
             }
-            if(t1 < tmax){
+            if(t1 < tmax) {
                 tmax = t1;
-                exitNormal = thisExit;
+                exitT = t1;
             }
 
             if(tmin > tmax){
@@ -334,17 +385,27 @@ std::pair<std::pair<Point, Point>, bool> mesh::Intersect_Line_Box(Point startPoi
     }
 
     if(tmin <= 1.0f && tmax >= 0.0f){
-        Vector3 entryPos = Vector3Add(p0, Vector3Scale(dir, tmin));
-        Vector3 exitPos  = Vector3Add(p0, Vector3Scale(dir, tmax));
+        Vector3 entryPos = Vector3Add(p0, Vector3Scale(dir, enterT));
+        Vector3 exitPos  = Vector3Add(p0, Vector3Scale(dir, exitT));
 
-        Point entry = { .Position = entryPos, .Normal = enterNormal };
-        Point exit  = { .Position = exitPos,  .Normal = exitNormal };
+        Vector3 entryNorm = Vector3Normalize(Vector3Add(
+            Vector3Scale(startPoint.Normal, 1.0f - enterT),
+            Vector3Scale(endPoint.Normal, enterT)
+        ));
+        Vector3 exitNorm = Vector3Normalize(Vector3Add(
+            Vector3Scale(startPoint.Normal, 1.0f - exitT),
+            Vector3Scale(endPoint.Normal, exitT)
+        ));
+
+        Point entry = { .Position = entryPos, .Normal = entryNorm };
+        Point exit  = { .Position = exitPos,  .Normal = exitNorm };
 
         return {{ entry, exit }, true};
     }
 
     return {{{}, {}}, false};
 }
+
 
 Line mesh::Clip_Line_To_Box(const Line& line, BoundingBox box, bool in_out){
     bool startInside = CheckCollisionPointBox(PointToVec3(line.startLinePoint), box);
@@ -525,6 +586,14 @@ std::vector<Line> mesh::Chain_Walker(const std::vector<Line>& unordered){
     return result;
 }
 
+std::vector<Line> mesh::Flatten_Culled_Lines(BoundingBox box, const std::vector<Line>& lines, bool in_out) {
+    std::vector<Lines> groups = Cull_Lines_ByBox(box, lines, in_out);
+    std::vector<Line> flat;
+    for (const Lines& group : groups) {
+        flat.insert(flat.end(), group.lineList.begin(), group.lineList.end());
+    }
+    return flat;
+}
 
 /**##########################################
  * #       Mesh Manipulation Functions      #
