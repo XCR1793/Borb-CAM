@@ -7,6 +7,7 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <algorithm>
+#include <map>
 
 #include "appmanagement.h"
 #include "meshmanagement.h"
@@ -177,6 +178,89 @@ std::vector<Line> GenerateUnifiedPath(const std::vector<std::vector<Line>>& slic
     return unified;
 }
 
+std::vector<Line> GenerateUnifiedPath_MultiIsland(
+    const std::map<std::pair<int, int>, std::vector<std::vector<Line>>>& islandSlices,
+    mesh& models, BoundingBox bbox)
+{
+    std::vector<Line> unified;
+
+    for (const auto& [key, slices] : islandSlices) {
+        std::vector<std::vector<Line>> adjustedSlices = slices;
+        std::vector<Point> rayEntries, rayExits;
+
+        // Compute entry/exit rays
+        for (auto& slice : adjustedSlices) {
+            slice = models.Orient_Line_Group(slice);
+
+            Point entry = slice.front().startLinePoint;
+            Point exit  = slice.back().endLinePoint;
+
+            Vector3 dirIn  = Vector3Negate(Vector3Normalize(entry.Normal));
+            Vector3 dirOut = Vector3Negate(Vector3Normalize(exit.Normal));
+            Vector3 hitIn, hitOut;
+
+            if (!models.RayIntersectsAABB(entry.Position, dirIn, bbox, &hitIn) ||
+                !models.RayIntersectsAABB(exit.Position, dirOut, bbox, &hitOut)) {
+                rayEntries.push_back(entry); // fallback to original
+                rayExits.push_back(exit);
+                continue;
+            }
+
+            rayEntries.push_back({ hitIn, entry.Normal });
+            rayExits.push_back({ hitOut, exit.Normal });
+        }
+
+        // Stitch the slices together
+        for (size_t i = 0; i < adjustedSlices.size(); ++i) {
+            std::vector<Line>& slice = adjustedSlices[i];
+
+            if (i > 0) {
+                float distToStart = Vector3Distance(rayExits[i - 1].Position, rayEntries[i].Position);
+                float distToEnd   = Vector3Distance(rayExits[i - 1].Position, rayExits[i].Position);
+
+                if (distToEnd < distToStart) {
+                    std::reverse(slice.begin(), slice.end());
+                    for (Line& l : slice)
+                        std::swap(l.startLinePoint, l.endLinePoint);
+                    std::swap(rayEntries[i], rayExits[i]);
+                }
+
+                unified.push_back(Line{
+                    .startLinePoint = rayExits[i - 1],
+                    .endLinePoint   = rayEntries[i],
+                    .type = 2,
+                    .meshNo = key.first,
+                    .islandNo = key.second
+                });
+            }
+
+            // Entry ray
+            unified.push_back(Line{
+                .startLinePoint = rayEntries[i],
+                .endLinePoint   = slice.front().startLinePoint,
+                .type = 2,
+                .meshNo = key.first,
+                .islandNo = key.second
+            });
+
+            // Slice itself
+            for (const Line& l : slice)
+                unified.push_back(l);
+
+            // Exit ray
+            unified.push_back(Line{
+                .startLinePoint = slice.back().endLinePoint,
+                .endLinePoint   = rayExits[i],
+                .type = 2,
+                .meshNo = key.first,
+                .islandNo = key.second
+            });
+        }
+    }
+
+    return unified;
+}
+
 int main(){
     app window;
     window.Initialise_Window(1000, 1500, 60, "Borb CAM Slicer", "src/Logo-Light.png");
@@ -211,9 +295,9 @@ int main(){
     window.Add_Button(23, 20, 100, 75, 650, "Slice B+");
     window.Add_Button(24, 20, 100, 75, 675, "Slice B-");
     window.Add_Button(25, 20, 180, 75, 700, "Rot: ABC");
-    window.Add_Button(26, 20, 160, 75, 725, "Hide lastPoint");
-    window.Add_Button(27, 20, 160, 75, 750, "Randomise Points");
-    window.Add_Button(28, 20, 160, 75, 775, "Apply TSP");
+    window.Add_Button(26, 20, 160, 75, 725, "Show/Hide Gen");
+    window.Add_Button(27, 20, 160, 75, 750, "Show/Hide Path");
+    window.Add_Button(28, 20, 160, 75, 775, "Load GCode");
 
     mesh models;
     path paths;
@@ -228,10 +312,12 @@ int main(){
     bool modelVisible = true;
     bool runSlice = false;
     bool generateRays = false;
-    bool showLastPoint = true;
+    bool showPath = true;
     std::vector<Line> finalRayLines;
     std::vector<Point> sliceLastPoints;
     std::vector<Line> combinedPath;
+    bool showCombinedPath = true;
+
     auto lastRunTime = std::chrono::steady_clock::now() - std::chrono::seconds(2);
 
     float x = 0, xk = 0, y = 0, yk = 0, z = 0, zk = 0;
@@ -282,6 +368,25 @@ int main(){
         if(window.Ret_Button(16)) slice_size -= 0.01f;
         if(slice_size <= 0) slice_size = 0.01f;
 
+        if (window.Ret_Button(20)) {
+            std::vector<std::pair<Vector3, Vector3>> pathPositions;
+            for (const auto& line : combinedPath) {
+                Vector3 pos = line.endLinePoint.Position;
+                Vector3 rot = models.NormalToRotation(line.endLinePoint.Normal); // or startLinePoint.Normal if more accurate
+                pathPositions.push_back({pos, rot});
+            }
+        
+            if (!pathPositions.empty()) {
+                paths.Clear_File();      // Optional: clear previous contents
+                paths.Reset_N();         // Reset line counter for "N" prefix
+                paths.Path_to_Gcode1(pathPositions);
+                TraceLog(LOG_INFO, "G-code written using path class with %zu entries", pathPositions.size());
+            } else {
+                TraceLog(LOG_WARNING, "No path positions found to save.");
+            }
+        }
+
+
         if(window.Ret_Button(21)) sliceAngleA += PI / 2.0f;
         if(window.Ret_Button(22)) sliceAngleA -= PI / 2.0f;
         if(window.Ret_Button(23)) sliceAngleB += PI / 2.0f;
@@ -295,29 +400,35 @@ int main(){
         }
 
         if(window.Ret_Button(26)) {
-            showLastPoint = !showLastPoint;
-            window.Rem_Button(26);
-            window.Add_Button(26, 20, 160, 75, 950, showLastPoint ? "Hide lastPoint" : "Show lastPoint");
+            showPath =! showPath;
         }
 
         if(window.Ret_Button(27)) {
-            sliceLastPoints.clear();
-            float i = -4;
-            Model modelCopy = models.Ret_Model(modelID);
-            while (i <= 4) {
-                Vector3 coefficients = slicing.rotation_coefficient(sliceAngleA, sliceAngleB);
-                std::vector<Line> result = models.Intersect_Model(modelCopy, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
-                if (!result.empty()) {
-                    int randomStart = GetRandomValue(0, (int)result.size() - 1);
-                    sliceLastPoints.push_back(models.lastPoint(result, randomStart, true));
+            showCombinedPath = !showCombinedPath;
+        }
+
+        if (window.Ret_Button(28)) {
+            combinedPath.clear();
+        
+            std::vector<std::pair<Vector3, Vector3>> pathPositions;
+            if (paths.Gcode_to_Path("src/OwO", "nc", pathPositions)) {
+                for (size_t i = 1; i < pathPositions.size(); ++i) {
+                    Line l;
+                    l.startLinePoint.Position = pathPositions[i - 1].first;
+                    l.startLinePoint.Normal   = pathPositions[i - 1].second;
+                    l.endLinePoint.Position   = pathPositions[i].first;
+                    l.endLinePoint.Normal     = pathPositions[i].second;
+                    l.type = 1; // default to G1 cut type, or infer from other metadata if needed
+                    combinedPath.push_back(l);
                 }
-                i += slice_size;
+            
+                TraceLog(LOG_INFO, "Loaded G-code as %zu lines from path system", combinedPath.size());
+            } else {
+                TraceLog(LOG_WARNING, "Failed to load G-code using path system");
             }
         }
 
-        if(window.Ret_Button(28)) {
-            tspLines = slicing.Generate_TSP_Lines_FromPoints(sliceLastPoints);
-        }
+
 
         if(window.Ret_Button(17)) {
             auto now = std::chrono::steady_clock::now();
@@ -353,6 +464,100 @@ int main(){
 
             xk = yk = zk = ak = bk = ck = 0;
             sk = 1;
+
+// if (runSlice) {
+//     intersectionList.clear();
+//     sliceLastPoints.clear();
+//     combinedPath.clear();
+
+//     BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[0]);
+//     Vector3 coefficients = slicing.rotation_coefficient(sliceAngleA, sliceAngleB);
+
+//     std::map<std::pair<int, int>, std::vector<std::vector<Line>>> islandSlices;
+//     std::map<std::pair<int, int>, std::vector<Point>> rayEntries;
+//     std::map<std::pair<int, int>, std::vector<Point>> rayExits;
+
+//     for (float i = -4; i <= 4; i += slice_size) {
+//         std::vector<Line> rawSlice = models.Intersect_Model(currentmodel.model, (Vector4){coefficients.x, coefficients.y, coefficients.z, i});
+//         std::vector<Line> culled = models.Flatten_Culled_Lines(cullBox, rawSlice, false);
+
+//         std::map<std::pair<int, int>, std::vector<Line>> grouped;
+//         for (const Line& l : culled)
+//             grouped[{l.meshNo, l.islandNo}].push_back(l);
+
+//         for (auto& [key, group] : grouped) {
+//             std::vector<Line> slice = models.Orient_Line_Group(group);
+//             Point entry = slice.front().startLinePoint;
+//             Point exit  = slice.back().endLinePoint;
+
+//             Vector3 dirIn  = Vector3Negate(Vector3Normalize(entry.Normal));
+//             Vector3 dirOut = Vector3Negate(Vector3Normalize(exit.Normal));
+//             Vector3 hitIn, hitOut;
+
+//             if (!models.RayIntersectsAABB(entry.Position, dirIn, bbox, &hitIn) ||
+//                 !models.RayIntersectsAABB(exit.Position, dirOut, bbox, &hitOut))
+//                 continue;
+
+//             rayEntries[key].push_back({ hitIn, entry.Normal });
+//             rayExits[key].push_back({ hitOut, exit.Normal });
+//             islandSlices[key].push_back(slice);
+//         }
+//     }
+
+//     // Flatten out visual rays for intersectionList
+//     for (const auto& [key, slices] : islandSlices) {
+//         const auto& entries = rayEntries[key];
+//         const auto& exits = rayExits[key];
+
+//         for (size_t i = 0; i < slices.size(); ++i) {
+//             std::vector<Line> slice = slices[i];
+
+//             if (i > 0) {
+//                 float distStart = Vector3Distance(exits[i - 1].Position, entries[i].Position);
+//                 float distEnd   = Vector3Distance(exits[i - 1].Position, exits[i].Position);
+
+//                 if (distEnd < distStart) {
+//                     std::reverse(slice.begin(), slice.end());
+//                     for (Line& l : slice) std::swap(l.startLinePoint, l.endLinePoint);
+//                 }
+
+//                 intersectionList.push_back(Line{
+//                     .startLinePoint = exits[i - 1],
+//                     .endLinePoint   = entries[i],
+//                     .type = 2,
+//                     .meshNo = key.first,
+//                     .islandNo = key.second
+//                 });
+//             }
+
+//             intersectionList.push_back(Line{
+//                 .startLinePoint = entries[i],
+//                 .endLinePoint   = slice.front().startLinePoint,
+//                 .type = 2,
+//                 .meshNo = key.first,
+//                 .islandNo = key.second
+//             });
+
+//             for (const Line& l : slice)
+//                 intersectionList.push_back(l);
+
+//             intersectionList.push_back(Line{
+//                 .startLinePoint = slice.back().endLinePoint,
+//                 .endLinePoint   = exits[i],
+//                 .type = 2,
+//                 .meshNo = key.first,
+//                 .islandNo = key.second
+//             });
+
+//             sliceLastPoints.push_back(slice.front().startLinePoint);
+//             sliceLastPoints.push_back(slice.back().endLinePoint);
+//         }
+//     }
+
+//     combinedPath = GenerateUnifiedPath_MultiIsland(islandSlices, models, bbox);
+//     runSlice = false;
+// }
+
 
 if (runSlice) {
     intersectionList.clear();
@@ -444,31 +649,27 @@ if (runSlice) {
 
     runSlice = false;
 }
-
 }
 
 BeginMode3D(camera);
 
 if (modelVisible) models.Run_Models();
 
-if (!combinedPath.empty()) {
+if (showCombinedPath && !combinedPath.empty()) {
     float totalLines = (float)combinedPath.size();
-
     for (size_t i = 0; i < combinedPath.size(); ++i) {
         const Line& line = combinedPath[i];
 
-        // Elevate the line by +1 unit in Y
         Vector3 start = line.startLinePoint.Position;
         Vector3 end   = line.endLinePoint.Position;
-        start.y += 1.0f;
-        end.y   += 1.0f;
+        start.y += 3.0f;
+        end.y   += 3.0f;
 
-        // Gradient: red (start) → blue (end)
         float t = (float)i / (totalLines - 1);
         Color color = {
-            (unsigned char)(255 * (1.0f - t)), // Red fades
+            (unsigned char)(255 * (1.0f - t)),
             0,
-            (unsigned char)(255 * t),         // Blue grows
+            (unsigned char)(255 * t),
             255
         };
 
@@ -476,45 +677,47 @@ if (!combinedPath.empty()) {
     }
 }
 
-for (const Line& line : intersectionList) {
-    if (line.type == 0 || line.type == 1) {
-        DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, BLUE);
-    } else if (line.type == 2) {
-        Vector3 dir = Vector3Normalize(Vector3Subtract(line.endLinePoint.Position, line.startLinePoint.Position));
-        Vector3 normal = Vector3Normalize(line.startLinePoint.Normal);
-        float alignment = Vector3DotProduct(dir, normal);
-        Color color = (alignment >= 0.0f) ? GREEN : RED;
-        DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
-    }
-}
-
-for (size_t i = 0; i + 1 < sliceLastPoints.size(); i += 2) {
-    const Point& entry = sliceLastPoints[i];
-    const Point& exit  = sliceLastPoints[i + 1];
-
-    Color entryColor = GREEN;
-    Color exitColor  = RED;
-
+if(showCombinedPath){
     for (const Line& line : intersectionList) {
-        if (line.type != 2) continue;
-
-        // Match entry point to a ray's end
-        if (Vector3Distance(entry.Position, line.endLinePoint.Position) < 0.0001f) {
+        if (line.type == 0 || line.type == 1) {
+            DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, BLUE);
+        } else if (line.type == 2) {
             Vector3 dir = Vector3Normalize(Vector3Subtract(line.endLinePoint.Position, line.startLinePoint.Position));
             Vector3 normal = Vector3Normalize(line.startLinePoint.Normal);
-            entryColor = (Vector3DotProduct(dir, normal) >= 0.0f) ? GREEN : RED;
-        }
-
-        // Match exit point to a ray's start
-        if (Vector3Distance(exit.Position, line.startLinePoint.Position) < 0.0001f) {
-            Vector3 dir = Vector3Normalize(Vector3Subtract(line.endLinePoint.Position, line.startLinePoint.Position));
-            Vector3 normal = Vector3Normalize(line.startLinePoint.Normal);
-            exitColor = (Vector3DotProduct(dir, normal) >= 0.0f) ? GREEN : RED;
+            float alignment = Vector3DotProduct(dir, normal);
+            Color color = (alignment >= 0.0f) ? GREEN : RED;
+            DrawLine3D(line.startLinePoint.Position, line.endLinePoint.Position, color);
         }
     }
 
-    DrawCube(entry.Position, 0.05f, 0.05f, 0.05f, entryColor);
-    DrawCube(exit.Position,  0.05f, 0.05f, 0.05f, exitColor);
+    for (size_t i = 0; i + 1 < sliceLastPoints.size(); i += 2) {
+        const Point& entry = sliceLastPoints[i];
+        const Point& exit  = sliceLastPoints[i + 1];
+
+        Color entryColor = GREEN;
+        Color exitColor  = RED;
+
+        for (const Line& line : intersectionList) {
+            if (line.type != 2) continue;
+
+            // Match entry point to a ray's end
+            if (Vector3Distance(entry.Position, line.endLinePoint.Position) < 0.0001f) {
+                Vector3 dir = Vector3Normalize(Vector3Subtract(line.endLinePoint.Position, line.startLinePoint.Position));
+                Vector3 normal = Vector3Normalize(line.startLinePoint.Normal);
+                entryColor = (Vector3DotProduct(dir, normal) >= 0.0f) ? GREEN : RED;
+            }
+
+            // Match exit point to a ray's start
+            if (Vector3Distance(exit.Position, line.startLinePoint.Position) < 0.0001f) {
+                Vector3 dir = Vector3Normalize(Vector3Subtract(line.endLinePoint.Position, line.startLinePoint.Position));
+                Vector3 normal = Vector3Normalize(line.startLinePoint.Normal);
+                exitColor = (Vector3DotProduct(dir, normal) >= 0.0f) ? GREEN : RED;
+            }
+        }
+
+        DrawCube(entry.Position, 0.05f, 0.05f, 0.05f, entryColor);
+        DrawCube(exit.Position,  0.05f, 0.05f, 0.05f, exitColor);
+    }
 }
 
 DrawCube((Vector3){0, -2, 0}, 4, 4, 4, (Color){255, 0, 0, 51});

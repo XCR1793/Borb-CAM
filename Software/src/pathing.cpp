@@ -267,3 +267,69 @@ bool path::Path_to_Gcode1(std::vector<std::pair<Vector3, Vector3>>& positions){
     }
     return true;
 }
+
+bool path::Gcode_to_Path(const std::string& fileName, const std::string& extension, std::vector<std::pair<Vector3, Vector3>>& outPositions) {
+    std::string filePath = fileName + (extension.empty() ? "" : "." + extension);
+    std::ifstream infile(filePath);
+    if (!infile.is_open()) {
+        TraceLog(LOG_WARNING, "Failed to open G-code file: %s", filePath.c_str());
+        return false;
+    }
+
+    Vector3 currentPos = {0, 0, 0};
+    Vector3 currentRot = {0, 0, 0};
+    std::string line;
+
+    while (std::getline(infile, line)) {
+        if (line.empty()) continue;
+
+        // Only care about motion commands
+        if (line.find("G0") == std::string::npos && line.find("G1") == std::string::npos)
+            continue;
+
+        // Track which components are explicitly set on this line
+        bool hasX = false, hasY = false, hasZ = false;
+        bool hasA = false, hasB = false, hasC = false;
+
+        float x = currentPos.x, y = currentPos.y, z = currentPos.z;
+        float a = currentRot.x, b = currentRot.y, c = currentRot.z;
+
+        std::istringstream ss(line);
+        std::string token;
+
+        while (ss >> token) {
+            if (token.length() < 2) continue;
+
+            char prefix = token[0];
+            std::string valueStr = token.substr(1);
+
+            // Skip non-axis tokens like N, G, M
+            if (prefix != 'X' && prefix != 'Y' && prefix != 'Z' &&
+                prefix != 'A' && prefix != 'B' && prefix != 'C') {
+                continue;
+            }
+
+            try {
+                float value = std::stof(valueStr);
+                switch (prefix) {
+                    case 'X': x = value; hasX = true; break;
+                    case 'Y': y = value; hasY = true; break;
+                    case 'Z': z = value; hasZ = true; break;
+                    case 'A': a = value; hasA = true; break;
+                    case 'B': b = value; hasB = true; break;
+                    case 'C': c = value; hasC = true; break;
+                }
+            } catch (...) {
+                // ignore malformed values
+                continue;
+            }
+        }
+
+        currentPos = { x, y, z };
+        currentRot = { a, b, c };
+        outPositions.emplace_back(currentPos, currentRot);
+    }
+
+    infile.close();
+    return true;
+}

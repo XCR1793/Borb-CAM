@@ -91,6 +91,8 @@ class path{
     bool Path_to_Gcode0(std::vector<std::pair<Vector3, Vector3>>& positions);
     bool Path_to_Gcode1(std::vector<std::pair<Vector3, Vector3>>& positions);
 
+    bool Gcode_to_Path(const std::string& fileName, const std::string& extension, std::vector<std::pair<Vector3, Vector3>>& outPositions);
+
     private:
     std::string default_file_path;
     long line = 0;
