@@ -42,10 +42,6 @@ struct Lines{
     float distance;
 };
 
-struct LineList{
-    std::vector<Lines> allLines;
-};
-
 class mesh{
     public:
     
@@ -96,12 +92,19 @@ class mesh{
 
     Vector3 PointToVec3(Point point);
 
-    /**
-     * Add point to point, to line equation
-     * Add Line to Plane Intersection 3D Point equation
-     * Run the intersection equation through all object points
-     * Return an array with all intersection points
-     */
+    /**##########################################
+     * #          Mesh Helper Functions         #
+     * ##########################################*/
+
+    float pointToPointDistance(Vector3 StartPoint, Vector3 EndPoint);
+
+    float pointToPointDistance(Point StartPoint, Point EndPoint);
+
+    int Triangle_Touching(Triangle first, Triangle second);
+
+    bool CheckCollisionPointBox(Vector3 point, BoundingBox box);
+
+    bool Line_Touching(const Line& a, const Line& b);
 
     /**##########################################
      * #       Mesh Manipulation Functions      #
@@ -117,8 +120,6 @@ class mesh{
 
     std::vector<std::vector<std::pair<int, Triangle>>> List_Triangles(Model model);
 
-    int Triangle_Touching(Triangle first, Triangle second);
-
     std::vector<std::pair<int, Triangle>> Sort_Triangles(std::vector<std::pair<int, Triangle>> Unsorted_Triangles);
 
     // Meshes, Islands, Triangle List(Triangle Number, Triangle)
@@ -127,11 +128,7 @@ class mesh{
     // Pair 1(Line Type [1 = Surface, 2 = Movement]), Pair 2(Start line, End line)
     std::vector<Line> Intersect_Model(Model &model, Vector4 Coeff_abcd);
 
-    bool CheckCollisionPointBox(Vector3 point, BoundingBox box);
-
-    std::vector<Line> Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines); // REDO
-
-    float pointToPointDistance(Vector3 StartPoint, Vector3 EndPoint);
+    std::vector<Lines> Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines, bool in_out);
 
     Point lastPoint(std::vector<Line> lineList, int startNo, bool direction);
 
@@ -145,5 +142,6 @@ class mesh{
 
     private:
     std::vector<multimodel> models;
+    float epsilon = 0.001f;
 };
 #endif

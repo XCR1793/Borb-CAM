@@ -222,6 +222,64 @@ Vector3 mesh::PointToVec3(Point point){
 }
 
 /**##########################################
+ * #          Mesh Helper Functions         #
+ * ##########################################*/
+
+float mesh::pointToPointDistance(Vector3 StartPoint, Vector3 EndPoint){
+    float dx = EndPoint.x - StartPoint.x;
+    float dy = EndPoint.y - StartPoint.y;
+    float dz = EndPoint.z - StartPoint.z;
+    return sqrtf(dx*dx + dy*dy + dz*dz);
+}
+
+float mesh::pointToPointDistance(Point StartPoint, Point EndPoint){
+    float dx = EndPoint.Position.x - StartPoint.Position.x;
+    float dy = EndPoint.Position.y - StartPoint.Position.y;
+    float dz = EndPoint.Position.z - StartPoint.Position.z;
+    return sqrtf(dx*dx + dy*dy + dz*dz);
+}
+
+int mesh::Triangle_Touching(Triangle first, Triangle second){
+    int i = 0;
+
+    if( (first.Vertex1.Position == second.Vertex1.Position) || 
+        (first.Vertex1.Position == second.Vertex2.Position) || 
+        (first.Vertex1.Position == second.Vertex3.Position)) i++;
+
+    if( (first.Vertex2.Position == second.Vertex1.Position) || 
+        (first.Vertex2.Position == second.Vertex2.Position) || 
+        (first.Vertex2.Position == second.Vertex3.Position)) i++;
+
+    if( (first.Vertex3.Position == second.Vertex1.Position) || 
+        (first.Vertex3.Position == second.Vertex2.Position) || 
+        (first.Vertex3.Position == second.Vertex3.Position)) i++;
+
+    return i;
+}
+
+bool mesh::CheckCollisionPointBox(Vector3 point, BoundingBox box){
+    const float epsilon = 1e-6f;
+
+    return (point.x > box.min.x + epsilon && point.x < box.max.x - epsilon) &&
+           (point.y > box.min.y + epsilon && point.y < box.max.y - epsilon) &&
+           (point.z > box.min.z + epsilon && point.z < box.max.z - epsilon);
+}
+
+bool mesh::Line_Touching(const Line& a, const Line& b){
+    Point aStart = a.startLinePoint;
+    Point aEnd   = a.endLinePoint;
+    Point bStart = b.startLinePoint;
+    Point bEnd   = b.endLinePoint;
+
+    return (
+        pointToPointDistance(aEnd, bStart) < epsilon ||  // a end → b start
+        pointToPointDistance(aEnd, bEnd)   < epsilon ||  // a end → b end
+        pointToPointDistance(aStart, bStart) < epsilon || // a start → b start
+        pointToPointDistance(aStart, bEnd)   < epsilon    // a start → b end
+    );
+}
+
+/**##########################################
  * #       Mesh Manipulation Functions      #
  * ##########################################*/
 
@@ -337,24 +395,6 @@ std::vector<std::vector<std::pair<int, Triangle>>> mesh::List_Triangles(Model mo
     }
 
     return All_Triangles;
-}
-
-int mesh::Triangle_Touching(Triangle first, Triangle second){
-    int i = 0;
-
-    if( (first.Vertex1.Position == second.Vertex1.Position) || 
-        (first.Vertex1.Position == second.Vertex2.Position) || 
-        (first.Vertex1.Position == second.Vertex3.Position)) i++;
-
-    if( (first.Vertex2.Position == second.Vertex1.Position) || 
-        (first.Vertex2.Position == second.Vertex2.Position) || 
-        (first.Vertex2.Position == second.Vertex3.Position)) i++;
-
-    if( (first.Vertex3.Position == second.Vertex1.Position) || 
-        (first.Vertex3.Position == second.Vertex2.Position) || 
-        (first.Vertex3.Position == second.Vertex3.Position)) i++;
-
-    return i;
 }
 
 std::vector<std::pair<int, Triangle>> mesh::Sort_Triangles(std::vector<std::pair<int, Triangle>> Unsorted_Triangles) {
@@ -478,106 +518,162 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
     return Lines;
 }
 
-bool mesh::CheckCollisionPointBox(Vector3 point, BoundingBox box){
-    const float epsilon = 1e-6f;
+// std::vector<std::vector<Line>> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines) {
+//     std::vector<std::vector<Line>> groupedLines;
+//     std::vector<Line> currentGroup;
+//     const float epsilon = 1e-6f;
 
-    return (point.x > box.min.x + epsilon && point.x < box.max.x - epsilon) &&
-           (point.y > box.min.y + epsilon && point.y < box.max.y - epsilon) &&
-           (point.z > box.min.z + epsilon && point.z < box.max.z - epsilon);
-}
+//     auto clipLineToBox = [&](Vector3 p0, Vector3 p1, float &tmin, float &tmax) -> bool {
+//         Vector3 dir = Vector3Subtract(p1, p0);
+//         tmin = 0.0f;
+//         tmax = 1.0f;
 
-std::vector<Line> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line> &lines){
-    std::vector<Line> result;
-    const float epsilon = 1e-6f;
+//         for (int i = 0; i < 3; i++) {
+//             float start = ((float*)&p0)[i];
+//             float d     = ((float*)&dir)[i];
+//             float minB  = ((float*)&box.min)[i];
+//             float maxB  = ((float*)&box.max)[i];
 
-    auto clipLineToBox = [&](Vector3 p0, Vector3 p1, float &tmin, float &tmax) -> bool {
-        Vector3 dir = Vector3Subtract(p1, p0);
-        tmin = 0.0f;
-        tmax = 1.0f;
+//             if (fabsf(d) < epsilon) {
+//                 if (start < minB || start > maxB) return false;
+//             } else {
+//                 float t0 = (minB - start) / d;
+//                 float t1 = (maxB - start) / d;
+//                 if (t0 > t1) std::swap(t0, t1);
+//                 if (t0 > tmin) tmin = t0;
+//                 if (t1 < tmax) tmax = t1;
+//                 if (tmin > tmax) return false;
+//             }
+//         }
 
-        for(int i = 0; i < 3; i++){
-            float start = ((float*)&p0)[i];
-            float d     = ((float*)&dir)[i];
-            float minB  = ((float*)&box.min)[i];
-            float maxB  = ((float*)&box.max)[i];
+//         return true;
+//     };
 
-            if(fabsf(d) < epsilon){
-                if(start < minB || start > maxB) return false;
-            }else{
-                float t0 = (minB - start) / d;
-                float t1 = (maxB - start) / d;
-                if(t0 > t1) std::swap(t0, t1);
-                if(t0 > tmin) tmin = t0;
-                if(t1 < tmax) tmax = t1;
-                if(tmin > tmax) return false;
+//     for (const Line& line : lines) {
+//         Vector3 a = line.startLinePoint.Position;
+//         Vector3 b = line.endLinePoint.Position;
+
+//         float tmin, tmax;
+
+//         if (!clipLineToBox(a, b, tmin, tmax)) {
+//             // Line is fully outside — push to group
+//             currentGroup.push_back(line);
+//             continue;
+//         }
+
+//         // Any line that gets clipped is a discontinuity
+//         if (!currentGroup.empty()) {
+//             groupedLines.push_back(currentGroup);
+//             currentGroup.clear();
+//         }
+
+//         if (tmin > epsilon) {
+//             Vector3 end = Vector3Add(a, Vector3Scale(Vector3Subtract(b, a), tmin));
+//             float t = tmin;
+//             Vector3 n = Vector3Normalize(Vector3Add(
+//                 Vector3Scale(line.startLinePoint.Normal, 1.0f - t),
+//                 Vector3Scale(line.endLinePoint.Normal, t)
+//             ));
+
+//             groupedLines.push_back({ (Line){
+//                 .startLinePoint = { a, line.startLinePoint.Normal },
+//                 .endLinePoint = { end, n },
+//                 .type = line.type,
+//                 .meshNo = line.meshNo,
+//                 .islandNo = line.islandNo
+//             }});
+//         }
+
+//         if (tmax < 1.0f - epsilon) {
+//             Vector3 start = Vector3Add(a, Vector3Scale(Vector3Subtract(b, a), tmax));
+//             float t = tmax;
+//             Vector3 n = Vector3Normalize(Vector3Add(
+//                 Vector3Scale(line.startLinePoint.Normal, 1.0f - t),
+//                 Vector3Scale(line.endLinePoint.Normal, t)
+//             ));
+
+//             groupedLines.push_back({ (Line){
+//                 .startLinePoint = { start, n },
+//                 .endLinePoint = { b, line.endLinePoint.Normal },
+//                 .type = line.type,
+//                 .meshNo = line.meshNo,
+//                 .islandNo = line.islandNo
+//             }});
+//         }
+//     }
+
+//     if (!currentGroup.empty()) {
+//         groupedLines.push_back(currentGroup);
+//     }
+
+//     return groupedLines;
+// }
+
+std::vector<Lines> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines, bool in_out){
+    std::vector<Lines> total_Line_List;
+    std::vector<Line> temp_Line_List;
+
+    for(auto line : lines){
+        if((CheckCollisionPointBox(PointToVec3(line.startLinePoint), box) && CheckCollisionPointBox(PointToVec3(line.endLinePoint), box)) == in_out){
+            temp_Line_List.push_back(line);
+        }else{
+            if(!temp_Line_List.empty()){
+                Lines group;
+                group.lineList      = temp_Line_List;
+                group.startPosition = temp_Line_List.front().startLinePoint.Position;
+                group.endPosition   = temp_Line_List.back().endLinePoint.Position;
+                group.distance      = pointToPointDistance(temp_Line_List.front().startLinePoint, temp_Line_List.back().endLinePoint);
+                total_Line_List.push_back(group);
+                temp_Line_List.clear();
             }
-        }
-
-        return true;
-    };
-
-    for(const Line &line : lines){
-        Vector3 a = line.startLinePoint.Position;
-        Vector3 b = line.endLinePoint.Position;
-
-        float fullLength = pointToPointDistance(a, b);
-        float tmin, tmax;
-
-        if(!clipLineToBox(a, b, tmin, tmax)){
-            // Entire line is outside box — keep it
-            result.push_back(line);
-            continue;
-        }
-
-        // We now know the segment between [tmin, tmax] is inside the box
-        // So we keep 0 to tmin (before entering) and tmax to 1 (after exiting)
-        if(tmin > epsilon){
-            Vector3 start = a;
-            Vector3 end = Vector3Add(a, Vector3Scale(Vector3Subtract(b, a), tmin));
-            float t = tmin;
-
-            Vector3 n = Vector3Normalize(Vector3Add(
-                Vector3Scale(line.startLinePoint.Normal, 1.0f - t),
-                Vector3Scale(line.endLinePoint.Normal, t)
-            ));
-
-            result.push_back((Line){
-                .startLinePoint = { start, line.startLinePoint.Normal },
-                .endLinePoint   = { end,   n },
-                .type           = line.type,
-                .meshNo         = line.meshNo,
-                .islandNo       = line.islandNo
-            });
-        }
-
-        if(tmax < 1.0f - epsilon){
-            Vector3 start = Vector3Add(a, Vector3Scale(Vector3Subtract(b, a), tmax));
-            Vector3 end = b;
-            float t = tmax;
-
-            Vector3 n = Vector3Normalize(Vector3Add(
-                Vector3Scale(line.startLinePoint.Normal, 1.0f - t),
-                Vector3Scale(line.endLinePoint.Normal, t)
-            ));
-
-            result.push_back((Line){
-                .startLinePoint = { start, n },
-                .endLinePoint   = { end,   line.endLinePoint.Normal },
-                .type           = line.type,
-                .meshNo         = line.meshNo,
-                .islandNo       = line.islandNo
-            });
         }
     }
 
-    return result;
-}
+    if(temp_Line_List.empty() && total_Line_List.empty()){return{};}
 
-float mesh::pointToPointDistance(Vector3 StartPoint, Vector3 EndPoint){
-    float dx = EndPoint.x - StartPoint.x;
-    float dy = EndPoint.y - StartPoint.y;
-    float dz = EndPoint.z - StartPoint.z;
-    return sqrtf(dx*dx + dy*dy + dz*dz);
+    if(!temp_Line_List.empty()){
+        Lines group;
+        group.lineList      = temp_Line_List;
+        group.startPosition = temp_Line_List.front().startLinePoint.Position;
+        group.endPosition   = temp_Line_List.back().endLinePoint.Position;
+        group.distance      = pointToPointDistance(temp_Line_List.front().startLinePoint, temp_Line_List.back().endLinePoint);
+        total_Line_List.push_back(group);
+    }
+
+    // Final continuity check: merge last group into first if any of their lines touch
+    if(total_Line_List.size() > 1){
+        Lines& first = total_Line_List.front();
+        Lines& last  = total_Line_List.back();
+
+        float epsilon = 0.001f;
+
+        bool shouldMerge = false;
+
+        for(const Line& fLine : first.lineList){
+            for(const Line& lLine : last.lineList){
+                if(Line_Touching(fLine, lLine)){
+                    shouldMerge = true;
+                    break;
+                }
+            }
+            if(shouldMerge) break;
+        }
+
+        if(shouldMerge){
+            std::vector<Line> merged;
+            merged.insert(merged.end(), last.lineList.begin(), last.lineList.end());
+            merged.insert(merged.end(), first.lineList.begin(), first.lineList.end());
+
+            first.lineList      = merged;
+            first.startPosition = merged.front().startLinePoint.Position;
+            first.endPosition   = merged.back().endLinePoint.Position;
+            first.distance      = pointToPointDistance(merged.front().startLinePoint, merged.back().endLinePoint);
+
+            total_Line_List.pop_back();
+        }
+    }
+
+    return total_Line_List;
 }
 
 Point mesh::lastPoint(std::vector<Line> lineList, int startNo, bool direction){
