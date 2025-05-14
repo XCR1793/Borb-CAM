@@ -77,7 +77,7 @@ vectors_per_model slice::model_path(Model model){
 }
 
 // Function to Slice
-bool slice::Slice(){};
+bool slice::Slice(){return true;};
 
 // Return Sliced Pathing
 paths slice::Return_Pathing(int id){

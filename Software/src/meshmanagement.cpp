@@ -260,9 +260,9 @@ int mesh::Triangle_Touching(Triangle first, Triangle second){
 bool mesh::CheckCollisionPointBox(Vector3 point, BoundingBox box){
     const float epsilon = 1e-6f;
 
-    return (point.x > box.min.x + epsilon && point.x < box.max.x - epsilon) &&
-           (point.y > box.min.y + epsilon && point.y < box.max.y - epsilon) &&
-           (point.z > box.min.z + epsilon && point.z < box.max.z - epsilon);
+    return (point.x >= box.min.x - epsilon && point.x <= box.max.x + epsilon)
+         && (point.y >= box.min.y - epsilon && point.y <= box.max.y + epsilon)
+         && (point.z >= box.min.z - epsilon && point.z <= box.max.z + epsilon);
 }
 
 bool mesh::Line_Touching(const Line& a, const Line& b){
@@ -278,6 +278,253 @@ bool mesh::Line_Touching(const Line& a, const Line& b){
         pointToPointDistance(aStart, bEnd)   < epsilon    // a start → b end
     );
 }
+
+Line mesh::Flip_Line(const Line& line){
+    Line flipped = line;
+    flipped.startLinePoint = line.endLinePoint;
+    flipped.endLinePoint   = line.startLinePoint;
+    return flipped;
+}
+
+std::pair<std::pair<Point, Point>, bool> mesh::Intersect_Line_Box(Point startPoint, Point endPoint, BoundingBox box){
+    Vector3 p0   = startPoint.Position;
+    Vector3 dir  = Vector3Subtract(endPoint.Position, p0);
+    float tmin   = 0.0f;
+    float tmax   = 1.0f;
+    Vector3 enterNormal = {};
+    Vector3 exitNormal  = {};
+
+    for(int i = 0; i < 3; i++){
+        float start = ((float*)&p0)[i];
+        float d     = ((float*)&dir)[i];
+        float minB  = ((float*)&box.min)[i];
+        float maxB  = ((float*)&box.max)[i];
+
+        if(fabsf(d) < 1e-6f){
+            if(start < minB || start > maxB){
+                return {{{}, {}}, false};
+            }
+        }else{
+            float t0 = (minB - start) / d;
+            float t1 = (maxB - start) / d;
+
+            Vector3 thisEnter = {};
+            Vector3 thisExit  = {};
+            ((float*)&thisEnter)[i] = (d > 0) ? -1.0f : 1.0f;
+            ((float*)&thisExit)[i]  = (d > 0) ?  1.0f : -1.0f;
+
+            if(t0 > t1){
+                std::swap(t0, t1);
+                std::swap(thisEnter, thisExit);
+            }
+
+            if(t0 > tmin){
+                tmin = t0;
+                enterNormal = thisEnter;
+            }
+            if(t1 < tmax){
+                tmax = t1;
+                exitNormal = thisExit;
+            }
+
+            if(tmin > tmax){
+                return {{{}, {}}, false};
+            }
+        }
+    }
+
+    if(tmin <= 1.0f && tmax >= 0.0f){
+        Vector3 entryPos = Vector3Add(p0, Vector3Scale(dir, tmin));
+        Vector3 exitPos  = Vector3Add(p0, Vector3Scale(dir, tmax));
+
+        Point entry = { .Position = entryPos, .Normal = enterNormal };
+        Point exit  = { .Position = exitPos,  .Normal = exitNormal };
+
+        return {{ entry, exit }, true};
+    }
+
+    return {{{}, {}}, false};
+}
+
+Line mesh::Clip_Line_To_Box(const Line& line, BoundingBox box, bool in_out){
+    bool startInside = CheckCollisionPointBox(PointToVec3(line.startLinePoint), box);
+    bool endInside   = CheckCollisionPointBox(PointToVec3(line.endLinePoint),   box);
+
+    Point newStart = line.startLinePoint;
+    Point newEnd   = line.endLinePoint;
+
+    if(startInside != endInside){
+        auto result = Intersect_Line_Box(line.startLinePoint, line.endLinePoint, box);
+
+        if(result.second){
+            Point entry = result.first.first;
+            Point exit  = result.first.second;
+
+            if(in_out){
+                if(!startInside) newStart = entry;
+                if(!endInside)   newEnd   = exit;
+            } else {
+                if(startInside) newStart = exit;
+                if(endInside)   newEnd   = entry;
+            }
+        }
+    }
+
+    Line result = {
+        .startLinePoint = newStart,
+        .endLinePoint   = newEnd,
+        .type           = line.type,
+        .meshNo         = line.meshNo,
+        .islandNo       = line.islandNo
+    };
+
+    // 🔁 Ensure consistent direction
+    float d1 = pointToPointDistance(line.startLinePoint.Position, result.startLinePoint.Position);
+    float d2 = pointToPointDistance(line.startLinePoint.Position, result.endLinePoint.Position);
+    if (d2 < d1){
+        result = Flip_Line(result);
+    }
+
+    return result;
+}
+
+std::vector<Line> mesh::Orient_Line_Group(const std::vector<Line>& lines){
+    if(lines.empty()) return {};
+
+    std::vector<Line> ordered;
+    std::vector<bool> used(lines.size(), false);
+    size_t total = lines.size();
+
+    ordered.push_back(lines[0]);
+    used[0] = true;
+
+    Point forwardEnd = ordered.back().endLinePoint;
+    while(ordered.size() < total){
+        bool extended = false;
+        for(size_t i = 0; i < total; ++i){
+            if(used[i]) continue;
+
+            const Line& candidate = lines[i];
+            if(pointToPointDistance(candidate.startLinePoint.Position, forwardEnd.Position) < epsilon){
+                ordered.push_back(candidate);
+                forwardEnd = candidate.endLinePoint;
+                used[i] = true;
+                extended = true;
+                break;
+            }
+            if(pointToPointDistance(candidate.endLinePoint.Position, forwardEnd.Position) < epsilon){
+                Line flipped = Flip_Line(candidate);
+                ordered.push_back(flipped);
+                forwardEnd = flipped.endLinePoint;
+                used[i] = true;
+                extended = true;
+                break;
+            }
+        }
+        if(!extended) break;
+    }
+
+    Point backwardStart = ordered.front().startLinePoint;
+    while(ordered.size() < total){
+        bool extended = false;
+        for(size_t i = 0; i < total; ++i){
+            if(used[i]) continue;
+
+            const Line& candidate = lines[i];
+            if(pointToPointDistance(candidate.endLinePoint.Position, backwardStart.Position) < epsilon){
+                ordered.insert(ordered.begin(), candidate);
+                backwardStart = candidate.startLinePoint;
+                used[i] = true;
+                extended = true;
+                break;
+            }
+            if(pointToPointDistance(candidate.startLinePoint.Position, backwardStart.Position) < epsilon){
+                Line flipped = Flip_Line(candidate);
+                ordered.insert(ordered.begin(), flipped);
+                backwardStart = flipped.startLinePoint;
+                used[i] = true;
+                extended = true;
+                break;
+            }
+        }
+        if(!extended) break;
+    }
+
+    return ordered;
+}
+
+std::vector<Line> mesh::Chain_Walker(const std::vector<Line>& unordered){
+    std::vector<Line> result;
+    std::vector<bool> used(unordered.size(), false);
+    size_t total = unordered.size();
+
+    if(total == 0) return result;
+
+    for(size_t i = 0; i < total; ++i){
+        if(used[i]) continue;
+
+        std::vector<Line> chain;
+        chain.push_back(unordered[i]);
+        used[i] = true;
+
+        Point forwardEnd = chain.back().endLinePoint;
+        while(true){
+            bool extended = false;
+            for(size_t j = 0; j < total; ++j){
+                if(used[j]) continue;
+
+                const Line& candidate = unordered[j];
+                if(pointToPointDistance(candidate.startLinePoint.Position, forwardEnd.Position) < 0.001f){
+                    chain.push_back(candidate);
+                    forwardEnd = candidate.endLinePoint;
+                    used[j] = true;
+                    extended = true;
+                    break;
+                }
+                if(pointToPointDistance(candidate.endLinePoint.Position, forwardEnd.Position) < 0.001f){
+                    Line flipped = Flip_Line(candidate);
+                    chain.push_back(flipped);
+                    forwardEnd = flipped.endLinePoint;
+                    used[j] = true;
+                    extended = true;
+                    break;
+                }
+            }
+            if(!extended) break;
+        }
+
+        Point backwardStart = chain.front().startLinePoint;
+        while(true){
+            bool extended = false;
+            for(size_t j = 0; j < total; ++j){
+                if(used[j]) continue;
+
+                const Line& candidate = unordered[j];
+                if(pointToPointDistance(candidate.endLinePoint.Position, backwardStart.Position) < 0.001f){
+                    chain.insert(chain.begin(), candidate);
+                    backwardStart = candidate.startLinePoint;
+                    used[j] = true;
+                    extended = true;
+                    break;
+                }
+                if(pointToPointDistance(candidate.startLinePoint.Position, backwardStart.Position) < 0.001f){
+                    Line flipped = Flip_Line(candidate);
+                    chain.insert(chain.begin(), flipped);
+                    backwardStart = flipped.startLinePoint;
+                    used[j] = true;
+                    extended = true;
+                    break;
+                }
+            }
+            if(!extended) break;
+        }
+
+        result.insert(result.end(), chain.begin(), chain.end());
+    }
+
+    return result;
+}
+
 
 /**##########################################
  * #       Mesh Manipulation Functions      #
@@ -518,163 +765,100 @@ std::vector<Line> mesh::Intersect_Model(Model &model, Vector4 Coeff_abcd){
     return Lines;
 }
 
-// std::vector<std::vector<Line>> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines) {
-//     std::vector<std::vector<Line>> groupedLines;
-//     std::vector<Line> currentGroup;
-//     const float epsilon = 1e-6f;
+std::vector<Lines> mesh::Group_Continuous(const std::vector<Line>& lines){
+    if(lines.empty()) return {};
 
-//     auto clipLineToBox = [&](Vector3 p0, Vector3 p1, float &tmin, float &tmax) -> bool {
-//         Vector3 dir = Vector3Subtract(p1, p0);
-//         tmin = 0.0f;
-//         tmax = 1.0f;
+    std::vector<Lines> groups;
+    std::vector<bool> visited(lines.size(), false);
 
-//         for (int i = 0; i < 3; i++) {
-//             float start = ((float*)&p0)[i];
-//             float d     = ((float*)&dir)[i];
-//             float minB  = ((float*)&box.min)[i];
-//             float maxB  = ((float*)&box.max)[i];
+    for(size_t i = 0; i < lines.size(); ++i){
+        if(visited[i]) continue;
 
-//             if (fabsf(d) < epsilon) {
-//                 if (start < minB || start > maxB) return false;
-//             } else {
-//                 float t0 = (minB - start) / d;
-//                 float t1 = (maxB - start) / d;
-//                 if (t0 > t1) std::swap(t0, t1);
-//                 if (t0 > tmin) tmin = t0;
-//                 if (t1 < tmax) tmax = t1;
-//                 if (tmin > tmax) return false;
-//             }
-//         }
+        std::vector<Line> group;
+        std::vector<size_t> stack;
+        stack.push_back(i);
+        visited[i] = true;
 
-//         return true;
-//     };
+        while(!stack.empty()){
+            size_t current = stack.back();
+            stack.pop_back();
+            group.push_back(lines[current]);
 
-//     for (const Line& line : lines) {
-//         Vector3 a = line.startLinePoint.Position;
-//         Vector3 b = line.endLinePoint.Position;
-
-//         float tmin, tmax;
-
-//         if (!clipLineToBox(a, b, tmin, tmax)) {
-//             // Line is fully outside — push to group
-//             currentGroup.push_back(line);
-//             continue;
-//         }
-
-//         // Any line that gets clipped is a discontinuity
-//         if (!currentGroup.empty()) {
-//             groupedLines.push_back(currentGroup);
-//             currentGroup.clear();
-//         }
-
-//         if (tmin > epsilon) {
-//             Vector3 end = Vector3Add(a, Vector3Scale(Vector3Subtract(b, a), tmin));
-//             float t = tmin;
-//             Vector3 n = Vector3Normalize(Vector3Add(
-//                 Vector3Scale(line.startLinePoint.Normal, 1.0f - t),
-//                 Vector3Scale(line.endLinePoint.Normal, t)
-//             ));
-
-//             groupedLines.push_back({ (Line){
-//                 .startLinePoint = { a, line.startLinePoint.Normal },
-//                 .endLinePoint = { end, n },
-//                 .type = line.type,
-//                 .meshNo = line.meshNo,
-//                 .islandNo = line.islandNo
-//             }});
-//         }
-
-//         if (tmax < 1.0f - epsilon) {
-//             Vector3 start = Vector3Add(a, Vector3Scale(Vector3Subtract(b, a), tmax));
-//             float t = tmax;
-//             Vector3 n = Vector3Normalize(Vector3Add(
-//                 Vector3Scale(line.startLinePoint.Normal, 1.0f - t),
-//                 Vector3Scale(line.endLinePoint.Normal, t)
-//             ));
-
-//             groupedLines.push_back({ (Line){
-//                 .startLinePoint = { start, n },
-//                 .endLinePoint = { b, line.endLinePoint.Normal },
-//                 .type = line.type,
-//                 .meshNo = line.meshNo,
-//                 .islandNo = line.islandNo
-//             }});
-//         }
-//     }
-
-//     if (!currentGroup.empty()) {
-//         groupedLines.push_back(currentGroup);
-//     }
-
-//     return groupedLines;
-// }
-
-std::vector<Lines> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines, bool in_out){
-    std::vector<Lines> total_Line_List;
-    std::vector<Line> temp_Line_List;
-
-    for(auto line : lines){
-        if((CheckCollisionPointBox(PointToVec3(line.startLinePoint), box) && CheckCollisionPointBox(PointToVec3(line.endLinePoint), box)) == in_out){
-            temp_Line_List.push_back(line);
-        }else{
-            if(!temp_Line_List.empty()){
-                Lines group;
-                group.lineList      = temp_Line_List;
-                group.startPosition = temp_Line_List.front().startLinePoint.Position;
-                group.endPosition   = temp_Line_List.back().endLinePoint.Position;
-                group.distance      = pointToPointDistance(temp_Line_List.front().startLinePoint, temp_Line_List.back().endLinePoint);
-                total_Line_List.push_back(group);
-                temp_Line_List.clear();
-            }
-        }
-    }
-
-    if(temp_Line_List.empty() && total_Line_List.empty()){return{};}
-
-    if(!temp_Line_List.empty()){
-        Lines group;
-        group.lineList      = temp_Line_List;
-        group.startPosition = temp_Line_List.front().startLinePoint.Position;
-        group.endPosition   = temp_Line_List.back().endLinePoint.Position;
-        group.distance      = pointToPointDistance(temp_Line_List.front().startLinePoint, temp_Line_List.back().endLinePoint);
-        total_Line_List.push_back(group);
-    }
-
-    // Final continuity check: merge last group into first if any of their lines touch
-    if(total_Line_List.size() > 1){
-        Lines& first = total_Line_List.front();
-        Lines& last  = total_Line_List.back();
-
-        float epsilon = 0.001f;
-
-        bool shouldMerge = false;
-
-        for(const Line& fLine : first.lineList){
-            for(const Line& lLine : last.lineList){
-                if(Line_Touching(fLine, lLine)){
-                    shouldMerge = true;
-                    break;
+            for(size_t j = 0; j < lines.size(); ++j){
+                if(!visited[j] && Line_Touching(lines[current], lines[j])){
+                    stack.push_back(j);
+                    visited[j] = true;
                 }
             }
-            if(shouldMerge) break;
         }
 
-        if(shouldMerge){
-            std::vector<Line> merged;
-            merged.insert(merged.end(), last.lineList.begin(), last.lineList.end());
-            merged.insert(merged.end(), first.lineList.begin(), first.lineList.end());
+        if(!group.empty()){
+            Lines continuousGroup;
+            continuousGroup.lineList = group;
 
-            first.lineList      = merged;
-            first.startPosition = merged.front().startLinePoint.Position;
-            first.endPosition   = merged.back().endLinePoint.Position;
-            first.distance      = pointToPointDistance(merged.front().startLinePoint, merged.back().endLinePoint);
+            // Orient and determine meta info
+            continuousGroup.lineList = Chain_Walker(continuousGroup.lineList);
+            continuousGroup.startPosition = continuousGroup.lineList.front().startLinePoint.Position;
+            continuousGroup.endPosition   = continuousGroup.lineList.back().endLinePoint.Position;
+            continuousGroup.distance = pointToPointDistance(
+                continuousGroup.lineList.front().startLinePoint,
+                continuousGroup.lineList.back().endLinePoint
+            );
 
-            total_Line_List.pop_back();
+            groups.push_back(continuousGroup);
         }
     }
 
-    return total_Line_List;
+    return groups;
 }
+
+
+std::vector<Lines> mesh::Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines, bool in_out){
+    std::vector<Line> filtered_Line_List;
+
+    // Filter lines fully inside or fully outside the box
+    for(const auto& line : lines){
+        bool startInside = CheckCollisionPointBox(PointToVec3(line.startLinePoint), box);
+        bool endInside   = CheckCollisionPointBox(PointToVec3(line.endLinePoint), box);
+
+        if((startInside && endInside) == in_out){
+            filtered_Line_List.push_back(line);
+        }
+    }
+
+    // Group continuous lines
+    std::vector<Lines> grouped = Group_Continuous(filtered_Line_List);
+
+    // Final output
+    std::vector<Lines> clippedGroups;
+
+    for(auto& group : grouped){
+        if(group.lineList.empty()) continue;
+
+        Lines clippedGroup;
+        clippedGroup.lineList = Orient_Line_Group(group.lineList);
+
+        // Clip the first and last line of the group (preserving direction)
+        for (Line& line : group.lineList) {             // MAYBE
+            line = Clip_Line_To_Box(line, box, in_out);             // MAYBE
+        }               // MAYBE
+        clippedGroup.lineList = Orient_Line_Group(group.lineList);              // MAYBE
+
+
+        // Recalculate start, end and distance
+        clippedGroup.startPosition = clippedGroup.lineList.front().startLinePoint.Position;
+        clippedGroup.endPosition   = clippedGroup.lineList.back().endLinePoint.Position;
+        clippedGroup.distance      = pointToPointDistance(
+            clippedGroup.lineList.front().startLinePoint,
+            clippedGroup.lineList.back().endLinePoint
+        );
+
+        clippedGroups.push_back(clippedGroup);
+    }
+
+    return clippedGroups;
+}
+
 
 Point mesh::lastPoint(std::vector<Line> lineList, int startNo, bool direction){
     if(lineList.empty() || startNo < 0 || startNo >= (int)lineList.size()){

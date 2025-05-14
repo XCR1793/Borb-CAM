@@ -42,6 +42,7 @@ struct Lines{
     float distance;
 };
 
+
 class mesh{
     public:
     
@@ -106,6 +107,16 @@ class mesh{
 
     bool Line_Touching(const Line& a, const Line& b);
 
+    Line Flip_Line(const Line& line);
+
+    std::pair<std::pair<Point, Point>, bool> Intersect_Line_Box(Point startPoint, Point endPoint, BoundingBox box);
+
+    Line Clip_Line_To_Box(const Line& line, BoundingBox box, bool in_out);
+
+    std::vector<Line> Orient_Line_Group(const std::vector<Line>& lines);
+
+    std::vector<Line> Chain_Walker(const std::vector<Line>& unordered);
+
     /**##########################################
      * #       Mesh Manipulation Functions      #
      * ##########################################*/
@@ -128,6 +139,8 @@ class mesh{
     // Pair 1(Line Type [1 = Surface, 2 = Movement]), Pair 2(Start line, End line)
     std::vector<Line> Intersect_Model(Model &model, Vector4 Coeff_abcd);
 
+    std::vector<Lines> Group_Continuous(const std::vector<Line>& lines);
+
     std::vector<Lines> Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines, bool in_out);
 
     Point lastPoint(std::vector<Line> lineList, int startNo, bool direction);
@@ -142,6 +155,6 @@ class mesh{
 
     private:
     std::vector<multimodel> models;
-    float epsilon = 0.001f;
+    float epsilon = 0.01f;
 };
 #endif
