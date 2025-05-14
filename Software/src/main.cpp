@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <raylib.h>
 #include <raymath.h>
+#include <algorithm>
 
 #include "appmanagement.h"
 #include "meshmanagement.h"
@@ -84,6 +85,183 @@ void TwoOptOptimizePoints(std::vector<Point>& path) {
             }
         }
     }
+}
+
+struct AABBEndpoints {
+    Vector3 entry;
+    Vector3 exit;
+    bool valid;
+};
+
+// Simulate slice direction and compute outer box hit points
+AABBEndpoints ComputeAABBEndpoints(const std::vector<Line>& slice, BoundingBox box, bool flip, mesh& models) {
+    std::vector<Line> oriented = models.Orient_Line_Group(slice);
+
+    std::vector<Line> rotated = oriented;
+    if (flip) {
+std::vector<Line> reversed;
+for (int i = (int)rotated.size() - 1; i >= 0; --i) {
+    Line l = rotated[i];
+    std::swap(l.startLinePoint, l.endLinePoint);  // Flip direction
+    reversed.push_back(l);
+}
+rotated = reversed;
+        for (Line& l : rotated) std::swap(l.startLinePoint, l.endLinePoint);
+    }
+
+    Point entry = rotated.front().startLinePoint;
+    Point exit  = rotated.back().endLinePoint;
+
+    Vector3 dirIn  = Vector3Negate(Vector3Normalize(entry.Normal));
+    Vector3 dirOut = Vector3Negate(Vector3Normalize(exit.Normal));
+
+    Vector3 hitIn, hitOut;
+    bool okIn  = models.RayIntersectsAABB(entry.Position, dirIn, box, &hitIn);
+    bool okOut = models.RayIntersectsAABB(exit.Position, dirOut, box, &hitOut);
+
+    if (okIn && okOut) {
+        return { hitIn, hitOut, true };
+    }
+
+    return { {}, {}, false };
+}
+
+struct SliceEntry {
+    int sliceIndex;
+    bool flipped;  // ← new
+};
+
+float CostBetween(const std::vector<SliceEntry>& seq, int a, int b,
+                  const std::vector<std::vector<Line>>& slices,
+                  BoundingBox box, mesh& models)
+{
+    if (a < 0 || b >= (int)seq.size()) return 0;
+
+    const auto& sliceA = slices[seq[a].sliceIndex];
+    const auto& sliceB = slices[seq[b].sliceIndex];
+
+    AABBEndpoints epA = ComputeAABBEndpoints(sliceA, box, seq[a].flipped, models);
+    AABBEndpoints epB = ComputeAABBEndpoints(sliceB, box, seq[b].flipped, models);
+
+    if (!epA.valid || !epB.valid)
+        return FLT_MAX;  // Don't optimize across invalid connections
+
+    return Vector3Distance(epA.exit, epB.entry);  // ← use only outer-to-outer ray distance
+}
+
+bool NextPermutation(std::vector<int>& seq) {
+    int i = (int)seq.size() - 2;
+    while (i >= 0 && seq[i] >= seq[i + 1]) --i;
+
+    if (i < 0) return false;  // Last permutation reached
+
+    int j = (int)seq.size() - 1;
+    while (seq[j] <= seq[i]) --j;
+
+    std::swap(seq[i], seq[j]);
+    std::reverse(seq.begin() + i + 1, seq.end());
+    return true;
+}
+
+size_t Factorial(int n) {
+    size_t result = 1;
+    for (int i = 2; i <= n; ++i) result *= i;
+    return result;
+}
+
+void BruteForceBestSequence(
+    const std::vector<std::vector<Line>>& slices,
+    BoundingBox box,
+    mesh& models,
+    std::vector<SliceEntry>& bestSequence,
+    float& bestCost)
+{
+    int n = slices.size();
+    std::vector<int> indices(n);
+    for (int i = 0; i < n; ++i) indices[i] = i;
+
+    size_t totalPermutations = Factorial(n);
+    size_t permCount = 0;
+
+    bestCost = FLT_MAX;
+
+    do {
+        permCount++;
+        if (permCount % 1000 == 0 || permCount == 1 || permCount == totalPermutations) {
+            printf("Evaluating permutation %zu / %zu\r", permCount, totalPermutations);
+            fflush(stdout);
+        }
+
+        // Try all flip combinations
+        // for (int flipMask = 0; flipMask < (1 << n); ++flipMask) {
+        for (int flipMask = 0; flipMask < 1; ++flipMask) {
+            std::vector<SliceEntry> candidate;
+            for (int i = 0; i < n; ++i) {
+                bool flipped = (flipMask >> i) & 1;
+                candidate.push_back({ indices[i], flipped });
+            }
+
+            float cost = 0.0f;
+            bool valid = true;
+            for (int i = 1; i < n; ++i) {
+                float c = CostBetween(candidate, i - 1, i, slices, box, models);
+                if (c == FLT_MAX) {
+                    valid = false;
+                    break;
+                }
+                cost += c;
+            }
+
+            if (valid && cost < bestCost) {
+                bestCost = cost;
+                bestSequence = candidate;
+            }
+        }
+    } while (NextPermutation(indices));
+
+    printf("\nBrute-force completed: %zu permutations evaluated.\n", permCount);
+}
+
+void NearestNeighborWithTwoOptSequence(
+    const std::vector<std::vector<Line>>& slices,
+    BoundingBox box,
+    mesh& models,
+    std::vector<SliceEntry>& sequence)
+{
+    int n = slices.size();
+    std::vector<bool> visited(n, false);
+    sequence.clear();
+
+    int currentIndex = 0;
+    visited[currentIndex] = true;
+    sequence.push_back({ currentIndex, false });  // Start with flip = false
+
+    for (int step = 1; step < n; ++step) {
+        float bestCost = FLT_MAX;
+        int bestIndex = -1;
+
+        // Enforce alternation: next flip is opposite of last
+        bool nextFlip = !sequence.back().flipped;
+
+        for (int i = 0; i < n; ++i) {
+            if (visited[i]) continue;
+
+            SliceEntry trial = { i, nextFlip };
+            std::vector<SliceEntry> test = { sequence.back(), trial };
+
+            float cost = CostBetween(test, 0, 1, slices, box, models);
+            if (cost < bestCost) {
+                bestCost = cost;
+                bestIndex = i;
+            }
+        }
+
+        visited[bestIndex] = true;
+        sequence.push_back({ bestIndex, nextFlip });
+    }
+
+    // Optional: skip 2-opt to preserve alternating pattern
+    // If you *really* want to run 2-opt, you'll need to maintain the alternation manually (can be done, but adds complexity)
 }
 
 int main(){
@@ -371,42 +549,25 @@ finalRayLines = models.Flatten_Culled_Lines(cullBox, processedRayLines, false);
     // ░░ 2-OPT SEQUENCE OPTIMIZATION ░░
     // ─────────────────────────────────────────────────────────────────────────────
 
-    struct SliceEntry {
-        int sliceIndex;
-        int startIndex;
-    };
 
-    std::vector<SliceEntry> sequence;
-    for (int i = 0; i < (int)allSlices.size(); ++i)
-        sequence.push_back({ i, 0 });
+std::vector<SliceEntry> sequence;
+float bestCost;
+BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[0]);
+// NearestNeighborWithTwoOptSequence(allSlices, bbox, models, sequence);
 
-    BoundingBox bbox = GetMeshBoundingBox(currentmodel.model.meshes[0]);
+
+for (int i = 0; i < (int)allSlices.size(); ++i)
+    sequence.push_back({ i, false });
+
+
     std::vector<Point> pointCache(sequence.size());
     for (size_t i = 0; i < sequence.size(); ++i) {
         pointCache[i] = models.lastPoint(allSlices[sequence[i].sliceIndex], 0, true);
     }
 
-    auto CostBetween = [&](size_t idxA, size_t idxB) -> float {
-        const Point& A = pointCache[idxA];
-        const Point& B = pointCache[idxB];
-
-        float dPos = Vector3Distance(A.Position, B.Position);
-
-        Vector3 dirA = Vector3Negate(Vector3Normalize(A.Normal));
-        Vector3 dirB = Vector3Negate(Vector3Normalize(B.Normal));
-
-        Vector3 hitA, hitB;
-        float dHit = (models.RayIntersectsAABB(A.Position, dirA, bbox, &hitA) &&
-                      models.RayIntersectsAABB(B.Position, dirB, bbox, &hitB))
-                    ? Vector3Distance(hitA, hitB)
-                    : dPos * 2.0f;
-
-        return dPos * 0.7f + dHit * 0.3f;
-    };
-
     bool improved = true;
     int iter = 0;
-    const int maxIter = 100;
+    const int maxIter = 10000;
     const float minDelta = 0.01f;
 
     while (improved && iter++ < maxIter) {
@@ -414,27 +575,51 @@ finalRayLines = models.Flatten_Culled_Lines(cullBox, processedRayLines, false);
 
         for (size_t i = 1; i < sequence.size() - 2; ++i) {
             for (size_t k = i + 2; k < sequence.size() - 1; ++k) {
-                float before = CostBetween(i - 1, i) + CostBetween(k, k + 1);
+float bestCost = FLT_MAX;
+bool bestFlipA = false, bestFlipB = false;
 
-                std::vector<SliceEntry> temp = sequence;
-                int a = i, b = k;
-                while (a < b) {
-                    std::swap(temp[a], temp[b]);
-                    a++;
-                    b--;
-                }
+for (bool flipA : { false, true }) {
+    for (bool flipB : { false, true }) {
+        sequence[i].flipped = flipA;
+        sequence[k].flipped = flipB;
+        float cost = CostBetween(sequence, i - 1, i, allSlices, bbox, models)
+           + CostBetween(sequence, k, k + 1, allSlices, bbox, models);
 
-                for (size_t t = i; t <= k; ++t) {
-                    pointCache[t] = models.lastPoint(allSlices[temp[t].sliceIndex], 0, true);
-                }
+        if (cost < bestCost) {
+            bestCost = cost;
+            bestFlipA = flipA;
+            bestFlipB = flipB;
+        }
+    }
+}
 
-                float after = CostBetween(i - 1, i) + CostBetween(k, k + 1);
+// Restore best flips
+sequence[i].flipped = bestFlipA;
+sequence[k].flipped = bestFlipB;
 
-                if (before - after > minDelta) {
-                    sequence = temp;
-                    improved = true;
-                    goto restart_2opt;
-                }
+float before = CostBetween(sequence, i - 1, i, allSlices, bbox, models)
+             + CostBetween(sequence, k, k + 1, allSlices, bbox, models);
+
+std::vector<SliceEntry> temp = sequence;
+int a = i, b = k;
+while (a < b) {
+    std::swap(temp[a], temp[b]);
+    a++;
+    b--;
+}
+
+for (size_t t = i; t <= k; ++t) {
+    pointCache[t] = models.lastPoint(allSlices[temp[t].sliceIndex], 0, true);
+}
+
+float after = CostBetween(temp, i - 1, i, allSlices, bbox, models)
+            + CostBetween(temp, k, k + 1, allSlices, bbox, models);
+if (before - after > minDelta) {
+    sequence = temp;
+    improved = true;
+    goto restart_2opt;
+}
+
             }
         }
 
@@ -447,9 +632,13 @@ finalRayLines = models.Flatten_Culled_Lines(cullBox, processedRayLines, false);
     // ─────────────────────────────────────────────────────────────────────────────
 sliceLastPoints.clear();
 intersectionList.clear();
+Vector3 lastOuterExit = { 0 };
+bool hasLastOuterExit = false;
+
 
 for (size_t i = 0; i < sequence.size(); ++i) {
     const auto& slice = allSlices[sequence[i].sliceIndex];
+        bool flip = sequence[i].flipped;
     int bestStart = 0;
     float bestScore = FLT_MAX;
 
@@ -466,47 +655,82 @@ for (size_t i = 0; i < sequence.size(); ++i) {
     std::vector<Line> oriented = models.Orient_Line_Group(slice);
 
     // Rotate slice to start at bestStart
-    std::vector<Line> rotated;
+std::vector<Line> rotated;
+
+if (!flip) {
     for (size_t j = bestStart; j < oriented.size(); ++j)
         rotated.push_back(oriented[j]);
     for (size_t j = 0; j < bestStart; ++j)
         rotated.push_back(oriented[j]);
+} else {
+    // Manually reverse the slice
+    std::vector<Line> reversed;
+    for (int j = (int)oriented.size() - 1; j >= 0; --j) {
+        Line l = oriented[j];
+        std::swap(l.startLinePoint, l.endLinePoint);  // flip direction
+        reversed.push_back(l);
+    }
+
+    // Manual rotation to adjust start index
+    int newStart = (int)reversed.size() - 1 - bestStart;
+    for (size_t j = newStart; j < reversed.size(); ++j)
+        rotated.push_back(reversed[j]);
+    for (size_t j = 0; j < newStart; ++j)
+        rotated.push_back(reversed[j]);
+}
+
+
 
     // 🔹 Get entry and exit
     Point entryPoint = rotated.front().startLinePoint;
     Point exitPoint = rotated.back().endLinePoint;
 
-    // 🔹 ENTRY AABB ray: from outer box to slice entry
-    Vector3 entryDir = Vector3Negate(Vector3Normalize(entryPoint.Normal));
-    Vector3 outerEntryHit;
-    if (models.RayIntersectsAABB(entryPoint.Position, entryDir, bbox, &outerEntryHit)) {
-        intersectionList.push_back(Line{
-            .startLinePoint = { outerEntryHit, entryPoint.Normal },
-            .endLinePoint   = entryPoint,
-            .type = 2
-        });
-    }
+// 🔹 ENTRY AABB ray: from outer box to slice entry
+Vector3 entryDir = Vector3Negate(Vector3Normalize(entryPoint.Normal));
+Vector3 outerEntryHit;
+bool hasEntryHit = models.RayIntersectsAABB(entryPoint.Position, entryDir, bbox, &outerEntryHit);
+if (hasEntryHit) {
+    intersectionList.push_back(Line{
+        .startLinePoint = { outerEntryHit, entryPoint.Normal },
+        .endLinePoint   = entryPoint,
+        .type = 2
+    });
+}
 
-    // 🔸 Slice path
-    for (const Line& l : rotated) {
-        intersectionList.push_back(l);
-    }
+// 🔗 Add connection from previous AABB exit to this AABB entry (box → box)
+if (hasLastOuterExit && hasEntryHit) {
+    intersectionList.push_back(Line{
+        .startLinePoint = { lastOuterExit, entryPoint.Normal },
+        .endLinePoint   = { outerEntryHit, entryPoint.Normal },
+        .type = 2
+    });
+}
 
-    // 🔹 EXIT AABB ray: from slice end to outer box
-    Vector3 exitDir = Vector3Negate(Vector3Normalize(exitPoint.Normal));
-    Vector3 outerExitHit;
-    if (models.RayIntersectsAABB(exitPoint.Position, exitDir, bbox, &outerExitHit)) {
-        intersectionList.push_back(Line{
-            .startLinePoint = exitPoint,
-            .endLinePoint   = { outerExitHit, exitPoint.Normal },
-            .type = 2
-        });
-    }
+// 🔸 Slice path
+for (const Line& l : rotated) {
+    intersectionList.push_back(l);
+}
 
-    // Save point to measure next entry distance
-    // Save both entry and exit to match drawing later
+// 🔹 EXIT AABB ray: from slice end to outer box
+Vector3 exitDir = Vector3Negate(Vector3Normalize(exitPoint.Normal));
+Vector3 outerExitHit;
+bool hasExitHit = models.RayIntersectsAABB(exitPoint.Position, exitDir, bbox, &outerExitHit);
+if (hasExitHit) {
+    intersectionList.push_back(Line{
+        .startLinePoint = exitPoint,
+        .endLinePoint   = { outerExitHit, exitPoint.Normal },
+        .type = 2
+    });
+}
+
+// Update for next loop
+lastOuterExit = outerExitHit;
+hasLastOuterExit = hasExitHit;
+
+// Store entry/exit points for cubes
 sliceLastPoints.push_back(entryPoint);
 sliceLastPoints.push_back(exitPoint);
+
 
 }
 
