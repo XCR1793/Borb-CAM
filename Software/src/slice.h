@@ -3,6 +3,7 @@
 
 #include <raylib.h>
 #include <vector>
+#include <string>
 #include "meshmanagement.h"
 #include "pathing.h"
 
@@ -22,6 +23,34 @@ struct paths{
 
 enum TSP_Types{
     Nearest_Neighbor
+};
+
+enum Output_Gcode_Rotation_Order{
+    ABC,
+    ACB,
+    BAC,
+    BCA,
+    CAB,
+    CBA
+};
+
+struct Settings{
+    // System Settings
+    std::string Title = "Default Settings";
+
+    // Slicer Settings
+
+
+    // Visualisation Settings
+
+
+    // Output Settings
+    std::string OutputDir = "src/";
+    std::string OutputFileName = "OwO";
+    std::string OutputFileType = ".nc";
+    Output_Gcode_Rotation_Order OutputRotOrder = Output_Gcode_Rotation_Order::ABC;
+
+    // Misc Settings
 };
 
 class slice{
@@ -52,8 +81,6 @@ class slice{
     /**##########################################
      * #              Slicing Tools             #
      * ##########################################*/
-
-    // 
 
     // Find Model Pathing
     vectors_per_model model_path(Model model);
