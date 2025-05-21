@@ -4,6 +4,7 @@
 #include <raylib.h>
 #include <vector>
 #include <string>
+#include <iostream>
 #include "meshmanagement.h"
 #include "pathing.h"
 
@@ -25,7 +26,7 @@ enum TSP_Types{
     Nearest_Neighbor
 };
 
-enum Output_Gcode_Rotation_Order{
+enum Gcode_Rotation_Order{
     ABC,
     ACB,
     BAC,
@@ -45,19 +46,19 @@ enum Setting_Units{
     mm,         // Default for metric
     cm,
     m,
-    mil,
-    inch,       // Default for imperial
+    mil,        // Default for imperial
+    inch,
     foot,
     degrees,    // Default for rotation (internal math is done in radians but converted to deg)
     rad,
-    millisecond,
+    milliseconds,
     seconds,    // Default Time Value
     minutes,
     hours
 };
 
 struct Setting_Values{
-    bool mode = 1;
+    bool mode = 0;
     float value = 0;
     Vector3 value3D = {0, 0, 0};
     float increment = 0;
@@ -82,8 +83,8 @@ struct Settings{
     // Slicer Settings
     Vector4 SlicingPlane = {0, 0, 0, 0};    // Plane Coeeficient: X, Y, Z, D (distance offset)
     float SlicingDistance = 5.0f;
-    Setting_Values SicingStartDistance = {.mode = 1};       // Mode 1 means its Auto (mode, value) only
-    Setting_Values SlicingEndHeight = {.mode = 1};          // Mode 1 means its Auto (mode, value) only
+    Setting_Values SlicingStartDistance = {.mode = 1};       // Mode 1 means its Auto (mode, value) only
+    Setting_Values SlicingEndDistance = {.mode = 1};          // Mode 1 means its Auto (mode, value) only
     float Max_Speed = 100.0f;               // 100mm/s default
     float Max_Acceleration = 2000.0f;       // 2000mm/s^2 default
     float Max_Angular_Increment = 0.0872664625f;    // 5 Deg in rad increments (Max amount of turn per action)
@@ -99,9 +100,9 @@ struct Settings{
     std::string OutputDir = "src/";
     std::string OutputFileName = "OwO";
     std::string OutputFileType = ".nc";
-    Output_Gcode_Rotation_Order OutputRotOrder = Output_Gcode_Rotation_Order::ABC;
 
     // Misc Settings
+    Gcode_Rotation_Order GcodeRotOrder = Gcode_Rotation_Order::ABC;
 };
 
 class slice{
@@ -117,35 +118,69 @@ class slice{
      * #            Algorithms Tools            #
      * ##########################################*/
 
-    // TSP Algorithm: Selector
-    std::vector<Line> TSP(std::vector<Point> points, TSP_Types tsp);
+    // // TSP Algorithm: Selector
+    // std::vector<Line> TSP(std::vector<Point> points, TSP_Types tsp);
 
-    // TSP Algorithm: Nearest Neighbor
-    std::vector<Line> Generate_TSP_Lines_FromPoints(std::vector<Point> points);
+    // // TSP Algorithm: Nearest Neighbor
+    // std::vector<Line> Generate_TSP_Lines_FromPoints(std::vector<Point> points);
+
 
     /**##########################################
-     * #            Slicing Settings            #
+     * #            Helper Functions            #
      * ##########################################*/
 
+    
 
+    /**##########################################
+     * #             System Settings            #
+     * ##########################################*/
+    
+    // Metadata
+    slice& Set_Title(const std::string& New_Title);
+    slice& Set_Description(const std::string& New_Description);
+    slice& Set_Misc_Text(const std::string& New_Misc_Text);
+
+    slice& Set_Output_Directory(const std::string& Output_Directory);
+    slice& Set_Output_Name(const std::string& Output_Name);
+    slice& Set_Output_Type(const std::string& Output_Type);
+
+    slice& Set_Unit(const Setting_Units& Unit_Type);
+    slice& Set_Unit_Precision(const Setting_Units& Unit_Precision);
+    slice& Set_Unit_Rotation(const Setting_Units& Unit_Rotation);
+    slice& Set_Unit_Time(const Setting_Units& Unit_Time);
+    slice& Set_Epsilon_Precision(const float& Epsilon_Precision);
+
+    slice& Toggle_Axis_Guides_3D(const Setting_Actions Enable_Disable);
+
+    slice& Set_Gcode_Rotation_Order(const Gcode_Rotation_Order Gcode_Rotation_Order);
+
+    /**##########################################
+     * #             Slicer Settings            #
+     * ##########################################*/
+
+    slice& Set_Slicing_Plane(const Vector4& Plane);
+    slice& Set_Slicing_Distance(const float& Distance);
+    slice& Set_Slicing_Start_Distance(const Setting_Values& Start_Distance);
+    slice& Set_Slicing_End_Distance(const Setting_Values& End_Distance);
+    
+    slice& Set_Max_Speed(const float& Speed);
+    slice& Set_Max_Acceleration(const float& Acceleration);
+    slice& Set_Max_Angular_Increment(const float& Angular_Increment);
+    
+    slice& Set_Starting_Position(const Setting_Values& Position);
+    slice& Set_Starting_Rotation(const Setting_Values& Rotation);
+    slice& Set_Finishing_Position(const Setting_Values& Position);
+    slice& Set_Finishing_Rotation(const Setting_Values& Rotation);
 
     /**##########################################
      * #              Slicing Tools             #
      * ##########################################*/
 
-    // Find Model Pathing
-    vectors_per_model model_path(Model model);
-
-    // Function to Slice
-    bool Slice();
-
-    // Return Sliced Pathing
-    paths Return_Pathing(int id);
+    
 
     private:
-    std::vector<paths> path_list;
-    mesh model_list;
-    path pathing;
+    Settings config;
+
 };
 
 #endif
