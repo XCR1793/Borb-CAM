@@ -18,57 +18,69 @@ float slice::distance_to_plane(Vector3 point, Vector4 Coeff_abcd){
  * #            Algorithms Tools            #
  * ##########################################*/
 
-// // TSP Selector
-// std::vector<Line> slice::TSP(std::vector<Point> points, TSP_Types tsp){
+// TSP Selector
+// std::vector<int> slice::TSP(std::vector<Point> points, TSP_Algorithm tsp){
 //     switch(tsp){
 //         case Nearest_Neighbor:
 //             return Generate_TSP_Lines_FromPoints(points);
 //         default:
+//             std::cout << "Invalid TSP Selected" << std::endl;
 //             return{};
 //     }
 // }
 
 // // TSP Nearest Neighbor
-// std::vector<Line> slice::Generate_TSP_Lines_FromPoints(std::vector<Point> points){
-//     std::vector<Line> tspLines;
-//     int n = points.size();
-//     if(n < 2) return tspLines;
+// std::vector<Line> slice::NearestNeighborPath(std::vector<Line> lines) {
+//     if (lines.empty()) return {};
 
-//     std::vector<bool> visited(n, false);
-//     std::vector<int> path;
-//     path.push_back(0);
+//     std::vector<Line> result;
+//     std::vector<bool> visited(lines.size(), false);
+
+//     // Start from the first line
+//     result.push_back(lines[0]);
 //     visited[0] = true;
 
-//     for(int step = 1; step < n; ++step){
-//         int last = path.back();
-//         float minDist = FLT_MAX;
-//         int nextIdx = -1;
+//     while (result.size() < lines.size()) {
+//         const Line& current = result.back();
+//         Vector3 currentPos = current.endLinePoint.Position;
 
-//         for(int i = 0; i < n; ++i){
-//             if(!visited[i]){
-//                 float dist = model_list.pointToPointDistance(points[last].Position, points[i].Position);
-//                 if(dist < minDist){
-//                     minDist = dist;
-//                     nextIdx = i;
-//                 }
+//         float minDist = std::numeric_limits<float>::max();
+//         int nextIndex = -1;
+//         bool reverseNext = false;
+
+//         for (size_t i = 0; i < lines.size(); ++i) {
+//             if (visited[i]) continue;
+
+//             float distToStart = mesh_Cl(currentPos, lines[i].startLinePoint.Position);
+//             float distToEnd   = Distance(currentPos, lines[i].endLinePoint.Position);
+
+//             if (distToStart < minDist) {
+//                 minDist = distToStart;
+//                 nextIndex = i;
+//                 reverseNext = false;
+//             }
+
+//             if (distToEnd < minDist) {
+//                 minDist = distToEnd;
+//                 nextIndex = i;
+//                 reverseNext = true;
 //             }
 //         }
 
-//         if(nextIdx >= 0){
-//             visited[nextIdx] = true;
-//             path.push_back(nextIdx);
+//         if (nextIndex != -1) {
+//             Line next = lines[nextIndex];
+//             if (reverseNext) {
+//                 std::swap(next.startLinePoint, next.endLinePoint);
+//             }
+
+//             result.push_back(next);
+//             visited[nextIndex] = true;
+//         } else {
+//             break; // no more reachable segments
 //         }
 //     }
 
-//     for (size_t i = 0; i < path.size() - 1; ++i) {
-//         Line tspLine;
-//         tspLine.startLinePoint = points[path[i]];
-//         tspLine.endLinePoint = points[path[i + 1]];
-//         tspLine.type = 2;
-//         tspLines.push_back(tspLine);
-//     }
-
-//     return tspLines;
+//     return result;
 // }
 
 /**##########################################
@@ -97,6 +109,36 @@ Vector2 slice::Box_Corner_Distances(BoundingBox Box, Vector4 Coeff_abcd){
     }
 
     return (Vector2){minimum_distance, maximum_distance};
+}
+
+std::vector<Line> slice::Flip_Vector(std::vector<Line>& Vector){
+    if(Vector.empty()){return Vector;}    
+    std::vector<Line> Flipped;
+    for(auto Flipped_Line : Vector){
+        Flipped.insert(Flipped.begin(), (Line){
+            .startLinePoint = Flipped_Line.endLinePoint,
+            .endLinePoint = Flipped_Line.startLinePoint,
+            .type = Flipped_Line.type,
+            .meshNo = Flipped_Line.meshNo,
+            .islandNo = Flipped_Line.islandNo
+        });
+    }
+    return Flipped;
+}
+
+std::vector<Line> slice::Modify_Starting_Pos(std::vector<Line>& Vector, int starting_id){
+    if(Vector.empty()){return Vector;}
+
+    std::vector<Line> result;
+    int size = Vector.size();
+    starting_id = ((starting_id % size) + size) % size;
+
+    for(int i = 0; i < size; ++i){
+        int index = (starting_id + i) % size;
+        result.push_back(Vector[index]);
+    }
+
+    return result;
 }
 
 /**##########################################
@@ -397,4 +439,82 @@ std::vector<std::vector<Line>> slice::Apply_AABB_Rays(std::vector<std::vector<Li
 
     // Return Toolpath with AABB Rays attached to the start and end of every continuous path
     return AllSlices;
+}
+
+std::vector<std::vector<Line>> slice::Optimise_Start_End_Positions(std::vector<std::vector<Line>>& ToolPaths){
+    if(ToolPaths.empty()){return ToolPaths;}
+
+    std::vector<std::vector<Line>> Optimised;
+
+    // Start with the first slice unchanged
+    Optimised.push_back(ToolPaths[0]);
+    Point lastExit = ToolPaths[0].back().endLinePoint;
+    for(size_t i = 1; i < ToolPaths.size(); ++i){
+        std::vector<Line>& current = ToolPaths[i];
+
+        if(current.empty()){
+            Optimised.push_back(current);
+            continue;
+        }
+
+        Point loopStart = current.front().startLinePoint;
+        Point loopEnd   = current.back().endLinePoint;
+
+        // Check if it's loopable (i.e., first point == last point)
+        bool isLoop = Vector3Distance(loopStart.Position, loopEnd.Position) < config.Epsilon_Precision;
+
+        if(!isLoop){
+            Optimised.push_back(current); // can't rotate, keep as-is
+            lastExit = current.back().endLinePoint;
+            continue;
+        }
+
+        // Try all rotation positions and pick the one closest to lastExit
+        int bestIndex = 0;
+        float bestDistance = std::numeric_limits<float>::max();
+
+        for(size_t j = 0; j < current.size(); ++j){
+            Point candidateStart = current[j].startLinePoint;
+            float dist = Vector3Distance(lastExit.Position, candidateStart.Position);
+            if(dist < bestDistance){
+                bestDistance = dist;
+                bestIndex = j;
+            }
+        }
+
+        std::vector<Line> rotated = Modify_Starting_Pos(current, bestIndex);
+        Optimised.push_back(rotated);
+        lastExit = rotated.back().endLinePoint;
+    }
+
+    return Optimised;
+}
+
+std::vector<std::vector<Line>> slice::Optimise_Start_End_Linkages(std::vector<std::vector<Line>>& ToolPaths){
+    if (ToolPaths.empty()) return ToolPaths;
+
+    std::vector<std::vector<Line>> OptimisedPaths;
+
+    // Start with the first path
+    OptimisedPaths.push_back(ToolPaths[0]);
+    Point lastExit = ToolPaths[0].back().endLinePoint;
+
+    for (size_t i = 1; i < ToolPaths.size(); ++i) {
+        std::vector<Line> currentPath = ToolPaths[i];
+        Point entry = currentPath.front().startLinePoint;
+        Point exit  = currentPath.back().endLinePoint;
+
+        float distToStart = Vector3Distance(lastExit.Position, entry.Position);
+        float distToEnd   = Vector3Distance(lastExit.Position, exit.Position);
+
+        if (distToEnd < distToStart) {
+            currentPath = Flip_Vector(currentPath);
+            std::swap(entry, exit); // update for next iteration
+        }
+
+        OptimisedPaths.push_back(currentPath);
+        lastExit = exit;
+    }
+
+    return OptimisedPaths;
 }

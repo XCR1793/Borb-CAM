@@ -5,24 +5,26 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <algorithm>
+#include <limits>
 #include "meshmanagement.h"
 #include "pathing.h"
 
-struct path_point{Vector3 position; Vector3 rotation; int point_number;};
+// struct path_point{Vector3 position; Vector3 rotation; int point_number;};
 
-struct vector_set{std::vector<path_point> point_list;};
+// struct vector_set{std::vector<path_point> point_list;};
 
-struct vectors_per_mesh{std::vector<vector_set> mesh_vector_list; int id;};
+// struct vectors_per_mesh{std::vector<vector_set> mesh_vector_list; int id;};
 
-struct vectors_per_model{std::vector<vectors_per_mesh> model_vector_list;};
+// struct vectors_per_model{std::vector<vectors_per_mesh> model_vector_list;};
 
-struct paths{
-    int id;
-    vectors_per_model path_list;
-    Vector4 slice_equation; // First 3: Rotation X Y Z, Last Digit: slice height
-};
+// struct paths{
+//     int id;
+//     vectors_per_model path_list;
+//     Vector4 slice_equation; // First 3: Rotation X Y Z, Last Digit: slice height
+// };
 
-enum TSP_Types{
+enum TSP_Algorithm{
     Nearest_Neighbor
 };
 
@@ -122,16 +124,20 @@ class slice{
      * ##########################################*/
 
     // // TSP Algorithm: Selector
-    // std::vector<Line> TSP(std::vector<Point> points, TSP_Types tsp);
+    // std::vector<int> TSP(std::vector<Point> points, TSP_Algorithm tsp);
 
     // // TSP Algorithm: Nearest Neighbor
-    // std::vector<Line> Generate_TSP_Lines_FromPoints(std::vector<Point> points);
+    // std::vector<Line> NearestNeighborPath(std::vector<Line> lines);
 
     /**##########################################
      * #            Helper Functions            #
      * ##########################################*/
 
     Vector2 Box_Corner_Distances(BoundingBox Box, Vector4 Coeff_abcd);
+
+    std::vector<Line> Flip_Vector(std::vector<Line>& Vector);
+
+    std::vector<Line> Modify_Starting_Pos(std::vector<Line>& Vector, int starting_id);
 
     /**##########################################
      * #             System Settings            #
@@ -185,7 +191,9 @@ class slice{
 
     std::vector<std::vector<Line>> Apply_AABB_Rays(std::vector<std::vector<Line>>& ToolPaths, BoundingBox AABB_Box);
 
-    // std::vector<std::vector<Line>> Optimise_Start_End(std::vector<std::vector<Line>>& ToolPaths, );
+    std::vector<std::vector<Line>> Optimise_Start_End_Positions(std::vector<std::vector<Line>>& ToolPaths);
+    
+    std::vector<std::vector<Line>> Optimise_Start_End_Linkages(std::vector<std::vector<Line>>& ToolPaths);
 
     private:
     Settings config;

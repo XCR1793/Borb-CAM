@@ -90,7 +90,9 @@ int main(){
             toolpath.clear();
             toolpath = slicing.Generate_Surface_Toolpath(newmodel);
             toolpath = slicing.Cull_Toolpath_by_Box(toolpath, cullBox);
+            toolpath = slicing.Optimise_Start_End_Positions(toolpath);
             toolpath = slicing.Apply_AABB_Rays(toolpath, GetModelBoundingBox(currentmodel));
+            toolpath = slicing.Optimise_Start_End_Linkages(toolpath);
         }
 
         BeginMode3D(camera);
@@ -104,7 +106,7 @@ int main(){
 
         Color gradientStart = BLUE;
         Color gradientEnd   = RED;
-            
+
         for (const auto& paths : toolpath) {
             size_t count = paths.size();
             for (size_t i = 0; i < count; ++i) {
