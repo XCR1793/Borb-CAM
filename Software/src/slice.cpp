@@ -370,7 +370,6 @@ std::vector<std::vector<Line>> slice::Generate_Surface_Toolpath(Model model){
 
     // Calculate Autos
     Vector2 Start_End_Distances = Box_Corner_Distances(GetModelBoundingBox(model), Settings_Copy.SlicingPlane);
-    std::cout << Start_End_Distances.x << "   " << Start_End_Distances.y << std::endl;
 
     if(Settings_Copy.SlicingStartDistance.mode){}else{Start_End_Distances.x = startDist;}
     if(Settings_Copy.SlicingEndDistance.mode  ){}else{Start_End_Distances.y = endDist;  }
@@ -491,7 +490,7 @@ std::vector<std::vector<Line>> slice::Optimise_Start_End_Positions(std::vector<s
 }
 
 std::vector<std::vector<Line>> slice::Optimise_Start_End_Linkages(std::vector<std::vector<Line>>& ToolPaths){
-    if (ToolPaths.empty()) return ToolPaths;
+    if(ToolPaths.empty()){return ToolPaths;}
 
     std::vector<std::vector<Line>> OptimisedPaths;
 
@@ -499,7 +498,7 @@ std::vector<std::vector<Line>> slice::Optimise_Start_End_Linkages(std::vector<st
     OptimisedPaths.push_back(ToolPaths[0]);
     Point lastExit = ToolPaths[0].back().endLinePoint;
 
-    for (size_t i = 1; i < ToolPaths.size(); ++i) {
+    for(size_t i = 1; i < ToolPaths.size(); ++i){
         std::vector<Line> currentPath = ToolPaths[i];
         Point entry = currentPath.front().startLinePoint;
         Point exit  = currentPath.back().endLinePoint;
@@ -507,12 +506,25 @@ std::vector<std::vector<Line>> slice::Optimise_Start_End_Linkages(std::vector<st
         float distToStart = Vector3Distance(lastExit.Position, entry.Position);
         float distToEnd   = Vector3Distance(lastExit.Position, exit.Position);
 
-        if (distToEnd < distToStart) {
+        bool shouldFlip = (distToEnd < distToStart);
+        if(shouldFlip){
             currentPath = Flip_Vector(currentPath);
-            std::swap(entry, exit); // update for next iteration
+            std::swap(entry, exit);
         }
 
+        // Create the linkage line from lastExit to current entry
+        Line linkageLine = {
+            .startLinePoint = lastExit,
+            .endLinePoint = entry,
+            .type = 2
+        };
+
+        // Add the linkage as a separate inner vector
+        OptimisedPaths.push_back({linkageLine});
+
+        // Then add the actual path
         OptimisedPaths.push_back(currentPath);
+
         lastExit = exit;
     }
 
