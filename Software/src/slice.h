@@ -82,7 +82,7 @@ struct Settings{
 
     // Slicer Settings
     Vector4 SlicingPlane = {0, 0, 0, 0};    // Plane Coeeficient: X, Y, Z, D (distance offset)
-    float SlicingDistance = 5.0f;
+    float SlicingDistance = 0.2f;
     Setting_Values SlicingStartDistance = {.mode = 1};       // Mode 1 means its Auto (mode, value) only
     Setting_Values SlicingEndDistance = {.mode = 1};          // Mode 1 means its Auto (mode, value) only
     float Max_Speed = 100.0f;               // 100mm/s default
@@ -114,6 +114,9 @@ class slice{
     // Convert Rotation X Y to Coefficient A B C
     Vector3 rotation_coefficient(float Rotation_X, float Rotation_Y);
 
+    // Distance to Plane
+    float distance_to_plane(Vector3 point, Vector4 Coeff_abcd);
+
     /**##########################################
      * #            Algorithms Tools            #
      * ##########################################*/
@@ -124,12 +127,11 @@ class slice{
     // // TSP Algorithm: Nearest Neighbor
     // std::vector<Line> Generate_TSP_Lines_FromPoints(std::vector<Point> points);
 
-
     /**##########################################
      * #            Helper Functions            #
      * ##########################################*/
 
-    
+    Vector2 Box_Corner_Distances(BoundingBox Box, Vector4 Coeff_abcd);
 
     /**##########################################
      * #             System Settings            #
@@ -159,6 +161,7 @@ class slice{
      * ##########################################*/
 
     slice& Set_Slicing_Plane(const Vector4& Plane);
+    slice& Set_Slicing_Plane(const Vector2& Rotation_X_Y, const float& Plane_Distance);
     slice& Set_Slicing_Distance(const float& Distance);
     slice& Set_Slicing_Start_Distance(const Setting_Values& Start_Distance);
     slice& Set_Slicing_End_Distance(const Setting_Values& End_Distance);
@@ -176,10 +179,17 @@ class slice{
      * #              Slicing Tools             #
      * ##########################################*/
 
-    
+    std::vector<std::vector<Line>> Generate_Surface_Toolpath(Model model);
+
+    std::vector<std::vector<Line>> Cull_Toolpath_by_Box(std::vector<std::vector<Line>>& ToolPaths, BoundingBox cullBox);
+
+    std::vector<std::vector<Line>> Apply_AABB_Rays(std::vector<std::vector<Line>>& ToolPaths, BoundingBox AABB_Box);
+
+    // std::vector<std::vector<Line>> Optimise_Start_End(std::vector<std::vector<Line>>& ToolPaths, );
 
     private:
     Settings config;
+    mesh mesh_Class;
 
 };
 

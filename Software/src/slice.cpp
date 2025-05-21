@@ -9,6 +9,11 @@ Vector3 slice::rotation_coefficient(float Rotation_X, float Rotation_Y){
     return (Vector3){sin(Rotation_Y), -sin(Rotation_X)*cos(Rotation_Y), cos(Rotation_X)*cos(Rotation_Y)};
 }
 
+// Distance to Plane
+float slice::distance_to_plane(Vector3 point, Vector4 Coeff_abcd){
+    return ((Coeff_abcd.x*point.x)+(Coeff_abcd.y*point.y)+(Coeff_abcd.z*point.z)-Coeff_abcd.w)/(sqrt((Coeff_abcd.x*Coeff_abcd.x)+(Coeff_abcd.y*Coeff_abcd.y)+(Coeff_abcd.z*Coeff_abcd.z)));
+}
+
 /**##########################################
  * #            Algorithms Tools            #
  * ##########################################*/
@@ -65,6 +70,34 @@ Vector3 slice::rotation_coefficient(float Rotation_X, float Rotation_Y){
 
 //     return tspLines;
 // }
+
+/**##########################################
+ * #            Helper Functions            #
+ * ##########################################*/
+
+Vector2 slice::Box_Corner_Distances(BoundingBox Box, Vector4 Coeff_abcd){
+    Vector3 corners[8] = {
+        {Box.min.x, Box.min.y, Box.min.z},
+        {Box.max.x, Box.min.y, Box.min.z},
+        {Box.min.x, Box.max.y, Box.min.z},
+        {Box.max.x, Box.max.y, Box.min.z},
+        {Box.min.x, Box.min.y, Box.max.z},
+        {Box.max.x, Box.min.y, Box.max.z},
+        {Box.min.x, Box.max.y, Box.max.z},
+        {Box.max.x, Box.max.y, Box.max.z}
+    };
+
+    float minimum_distance = FLT_MAX;
+    float maximum_distance = -FLT_MAX;
+
+    for(int i = 0; i < 8; i++){
+        float distance = distance_to_plane(corners[i], Coeff_abcd);
+        if(distance < minimum_distance){minimum_distance = distance;}
+        if(distance > maximum_distance){maximum_distance = distance;}
+    }
+
+    return (Vector2){minimum_distance, maximum_distance};
+}
 
 /**##########################################
  * #             System Settings            #
@@ -220,6 +253,12 @@ slice& slice::Set_Slicing_Plane(const Vector4& Plane){
     return *this;
 }
 
+slice& slice::Set_Slicing_Plane(const Vector2& Rotation_X_Y, const float& Plane_Distance){
+    Vector3 Coeff_abc = rotation_coefficient(Rotation_X_Y.x, Rotation_X_Y.y);
+    config.SlicingPlane = (Vector4){Coeff_abc.x, Coeff_abc.y, Coeff_abc.z, Plane_Distance};
+    return *this;
+}
+
 slice& slice::Set_Slicing_Distance(const float& Distance){
     if(Distance < 0){std::cout << "Slicing distance cannot be negative." << std::endl; return *this;}
     if(Distance == 0){std::cout << "Slicing distance cannot be 0." << std::endl; return *this;}
@@ -276,7 +315,86 @@ slice& slice::Set_Finishing_Rotation(const Setting_Values& Rotation){
     return *this;
 }
 
-
 /**##########################################
  * #              Slicing Tools             #
  * ##########################################*/
+
+std::vector<std::vector<Line>> slice::Generate_Surface_Toolpath(Model model){
+    // Store Local Values of Settings
+    Settings Settings_Copy = config;
+
+    // Variables
+    float startDist = Settings_Copy.SlicingStartDistance.value, endDist = Settings_Copy.SlicingEndDistance.value;
+
+    // Calculate Autos
+    Vector2 Start_End_Distances = Box_Corner_Distances(GetModelBoundingBox(model), Settings_Copy.SlicingPlane);
+    std::cout << Start_End_Distances.x << "   " << Start_End_Distances.y << std::endl;
+
+    if(Settings_Copy.SlicingStartDistance.mode){}else{Start_End_Distances.x = startDist;}
+    if(Settings_Copy.SlicingEndDistance.mode  ){}else{Start_End_Distances.y = endDist;  }
+    
+    // Slicing
+    std::vector<std::vector<Line>> All_Slices;
+    if(model.meshes->vertexCount > 2){
+        for(float i = Start_End_Distances.x; i <= Start_End_Distances.y; i += Settings_Copy.SlicingDistance){
+            Vector4 currentSlicingPlane = Settings_Copy.SlicingPlane;
+            currentSlicingPlane.w = i;
+            std::vector<Line> result = mesh_Class.Intersect_Model(model, currentSlicingPlane);
+            if(!result.empty()){All_Slices.push_back(result);}
+        }
+    }
+    
+    // Return Surface Toolpath (Using this output RAW isnt recommended)
+    return All_Slices;
+}
+
+std::vector<std::vector<Line>> slice::Cull_Toolpath_by_Box(std::vector<std::vector<Line>>& Toolpaths, BoundingBox cullBox){
+    if(Toolpaths.empty()){return Toolpaths;}
+
+    // Culling Toolpaths
+    std::vector<std::vector<Line>> All_Slices;
+    for(auto Slice_Set : Toolpaths){
+        std::vector<Line> result = mesh_Class.Flatten_Culled_Lines(cullBox, Slice_Set, false);
+        if(!result.empty()){All_Slices.push_back(result);}
+    }
+
+    // Return Culled Toolpath (Using this output RAW isnt recommended)
+    return All_Slices;
+}
+
+std::vector<std::vector<Line>> slice::Apply_AABB_Rays(std::vector<std::vector<Line>>& ToolPaths, BoundingBox AABB_Box){
+    if(ToolPaths.empty()){return ToolPaths;}
+
+    // Applying AABB Rays to Start & End of toolpath
+    std::vector<std::vector<Line>> AllSlices;
+    for(auto& Slice : ToolPaths){
+        if(Slice.empty()) continue;
+
+        std::vector<Line> result = mesh_Class.Orient_Line_Group(Slice);
+
+        Point entry = Slice.front().startLinePoint;
+        Point exit  = Slice.back().endLinePoint;
+
+        Vector3 entry_Direction = Vector3Negate(Vector3Normalize(entry.Normal));
+        Vector3 exit_Direction  = Vector3Negate(Vector3Normalize(exit.Normal));
+        Vector3 entry_Point = {0, 0, 0}, exit_Point = {0, 0, 0};
+
+        bool entry_hit = mesh_Class.RayIntersectsAABB(entry.Position, entry_Direction, AABB_Box, &entry_Point);
+        bool exit_hit  = mesh_Class.RayIntersectsAABB(exit.Position , exit_Direction , AABB_Box, &exit_Point );
+
+        if(entry_hit && exit_hit){
+            // Create front and end lines
+            Line entryLine = {.startLinePoint = {entry_Point, entry.Normal}, .endLinePoint = entry};
+            Line exitLine  = {.startLinePoint = exit, .endLinePoint = {exit_Point, exit.Normal}};
+
+            // Insert at front and back
+            result.insert(result.begin(), entryLine);
+            result.push_back(exitLine);
+
+            AllSlices.push_back(result);
+        }
+    }
+
+    // Return Toolpath with AABB Rays attached to the start and end of every continuous path
+    return AllSlices;
+}
