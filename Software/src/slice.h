@@ -92,8 +92,8 @@ struct Settings{
     float Max_Angular_Increment = 0.0872664625f;    // 5 Deg in rad increments (Max amount of turn per action)
     Setting_Values Starting_Position = {.mode = 1}; // Mode 1 = Auto (start where it is), (mode, value3D, increment) only
     Setting_Values Starting_Rotation = {.mode = 1}; // Mode 1 = Auto (start where it is), (mode, value3D, increment) only
-    Setting_Values Finishing_Position = {.mode = 1}; // Mode 1 = Auto (finish where it is), (mode, value3D, increment) only
-    Setting_Values Finishing_Rotation = {.mode = 1}; // Mode 1 = Auto (finish where it is), (mode, value3D, increment) only
+    Setting_Values Ending_Position = {.mode = 1}; // Mode 1 = Auto (finish where it is), (mode, value3D, increment) only
+    Setting_Values Ending_Rotation = {.mode = 1}; // Mode 1 = Auto (finish where it is), (mode, value3D, increment) only
 
     // Visualisation Settings
     Setting_Actions Axis_Guides_3D = Setting_Actions::Enable; // X Y Z Guides in 3D Space (Enable/Disable) only
@@ -178,8 +178,8 @@ class slice{
     
     slice& Set_Starting_Position(const Setting_Values& Position);
     slice& Set_Starting_Rotation(const Setting_Values& Rotation);
-    slice& Set_Finishing_Position(const Setting_Values& Position);
-    slice& Set_Finishing_Rotation(const Setting_Values& Rotation);
+    slice& Set_Ending_Position(const Setting_Values& Position);
+    slice& Set_Ending_Rotation(const Setting_Values& Rotation);
 
     /**##########################################
      * #              Slicing Tools             #
@@ -204,6 +204,7 @@ class slice{
     std::vector<std::vector<Line>> Apply_AABB_Rays(BoundingBox AABB_Box);
     std::vector<std::vector<Line>> Optimise_Start_End_Positions();
     std::vector<std::vector<Line>> Optimise_Start_End_Linkages();
+    std::vector<std::vector<Line>> Add_Start_End_Positions();
 
 
 

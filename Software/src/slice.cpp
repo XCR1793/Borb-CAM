@@ -347,13 +347,13 @@ slice& slice::Set_Starting_Rotation(const Setting_Values& Rotation){
     return *this;
 }
 
-slice& slice::Set_Finishing_Position(const Setting_Values& Position){
-    config.Finishing_Position = Position;
+slice& slice::Set_Ending_Position(const Setting_Values& Position){
+    config.Ending_Position = Position;
     return *this;
 }
 
-slice& slice::Set_Finishing_Rotation(const Setting_Values& Rotation){
-    config.Finishing_Rotation = Rotation;
+slice& slice::Set_Ending_Rotation(const Setting_Values& Rotation){
+    config.Ending_Rotation = Rotation;
     return *this;
 }
 
@@ -534,6 +534,56 @@ std::vector<std::vector<Line>> slice::Optimise_Start_End_Linkages(std::vector<st
     return OptimisedPaths;
 }
 
+std::vector<std::vector<Line>> slice::Add_Start_End_Positions(std::vector<std::vector<Line>>& ToolPaths){
+    if(ToolPaths.empty()){return ToolPaths;}
+
+    std::vector<std::vector<Line>> All_ToolPaths = ToolPaths;
+
+    // Local Copy of Settings
+    Settings Settings_Copy = config;
+
+    // Calculate Non-Auto (Manual) Positions
+    Vector3 Starting_Pos = Settings_Copy.Starting_Position.value3D;
+    Vector3 Starting_Rot = Settings_Copy.Starting_Rotation.value3D;
+    Vector3 Ending_Pos = Settings_Copy.Ending_Position.value3D;
+    Vector3 Ending_Rot = Settings_Copy.Ending_Rotation.value3D;
+
+    Line Starting_Line = {
+        .startLinePoint = {
+            .Position = Starting_Pos,
+            .Normal   = Starting_Rot
+        },
+        .endLinePoint = {
+            .Position = All_ToolPaths.front().front().startLinePoint.Position,
+            .Normal   = All_ToolPaths.front().front().startLinePoint.Normal
+        }
+    };
+
+    Line Ending_Line = {
+        .startLinePoint = {
+            .Position = All_ToolPaths.back().back().endLinePoint.Position,
+            .Normal   = All_ToolPaths.back().back().endLinePoint.Normal
+        },
+        .endLinePoint = {
+            .Position = Ending_Pos,
+            .Normal   = Ending_Rot
+        }
+    };
+
+    std::vector<Line> Starting_Line_Vector = {Starting_Line};
+    std::vector<Line> Ending_Line_Vector   = {Ending_Line};
+
+    if(Settings_Copy.Starting_Position.mode){
+        return All_ToolPaths;
+    }else{
+        All_ToolPaths.insert(All_ToolPaths.begin(), Starting_Line_Vector);
+        All_ToolPaths.push_back(Ending_Line_Vector);
+    }
+    
+    // Return Modified Toolpath
+    return All_ToolPaths;
+}
+
 /**##########################################
  * #        Slicing Tools (Buffered)        #
  * ##########################################*/
@@ -571,5 +621,10 @@ std::vector<std::vector<Line>> slice::Optimise_Start_End_Positions(){
 
 std::vector<std::vector<Line>> slice::Optimise_Start_End_Linkages(){
     Current_Toolpath = Optimise_Start_End_Linkages(Current_Toolpath);
+    return Current_Toolpath;
+}
+
+std::vector<std::vector<Line>> slice::Add_Start_End_Positions(){
+    Current_Toolpath = Add_Start_End_Positions(Current_Toolpath);
     return Current_Toolpath;
 }

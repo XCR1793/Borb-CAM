@@ -79,6 +79,8 @@ int main(){
     slice slicing;
     slicing.Set_Slicing_Plane((Vector2){PI/4, 0}, 0);
     slicing.Set_Slicing_Distance(0.1f);
+    slicing.Set_Starting_Position((Setting_Values){.mode = 0, .value3D = (Vector3){10, 10, 0}});
+    slicing.Set_Ending_Position((Setting_Values){.mode = 0, .value3D = (Vector3){0, 10, 10}});
 
     while(!WindowShouldClose()){
         models.Sha_Model(1, shader);
@@ -93,6 +95,7 @@ int main(){
             slicing.Optimise_Start_End_Positions();
             slicing.Apply_AABB_Rays(GetModelBoundingBox(currentmodel));
             slicing.Optimise_Start_End_Linkages();
+            slicing.Add_Start_End_Positions();
             toolpath = slicing.Return_Toolpath();
         }
 
