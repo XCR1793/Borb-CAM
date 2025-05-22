@@ -77,10 +77,18 @@ int main(){
     std::vector<std::vector<Line>> toolpath;
 
     slice slicing;
-    slicing.Set_Slicing_Plane((Vector2){PI/4, 0}, 0);
-    slicing.Set_Slicing_Distance(0.1f);
-    slicing.Set_Starting_Position((Setting_Values){.mode = 0, .value3D = (Vector3){10, 10, 0}});
-    slicing.Set_Ending_Position((Setting_Values){.mode = 0, .value3D = (Vector3){0, 10, 10}});
+    slicing
+        .Set_Slicing_Plane((Vector2){PI/4, 0}, 0)
+        .Set_Slicing_Distance(0.1f)
+        .Set_Starting_Position((Setting_Values){.mode = 0, .value3D = (Vector3){10, 10, 0}})
+        .Set_Ending_Position((Setting_Values){.mode = 0, .value3D = (Vector3){0, 10, 10}});
+    
+
+    size_t currentLineIndex = 0;
+    float animationProgress = 0.0f;
+    auto lastUpdate = std::chrono::high_resolution_clock::now();
+    std::vector<Line> flatToolpath; // Flattened toolpath used for animation
+
 
     while(!WindowShouldClose()){
         models.Sha_Model(1, shader);
@@ -96,17 +104,21 @@ int main(){
             slicing.Apply_AABB_Rays(GetModelBoundingBox(currentmodel));
             slicing.Optimise_Start_End_Linkages();
             slicing.Add_Start_End_Positions();
+            slicing.Interpolate_Max_Angle_Displacement();
             toolpath = slicing.Return_Toolpath();
+
+            flatToolpath.clear();
+            for (const auto& segment : toolpath) {
+                flatToolpath.insert(flatToolpath.end(), segment.begin(), segment.end());
+            }
+            currentLineIndex = 0;
+            animationProgress = 0.0f;
+            lastUpdate = std::chrono::high_resolution_clock::now();
         }
+
 
         BeginMode3D(camera);
         DrawBoundingBox(GetModelBoundingBox(newmodel), GREEN);
-
-        // for(auto paths : toolpath){
-        //     for(auto path : paths){
-        //         DrawLine3D(path.startLinePoint.Position, path.endLinePoint.Position, BLUE);
-        //     }
-        // }
 
         Color gradientStart = BLUE;
         Color gradientEnd   = RED;
@@ -120,6 +132,54 @@ int main(){
                 DrawLine3D(paths[i].startLinePoint.Position, paths[i].endLinePoint.Position, lineColor);
             }
         }
+
+        // Animation
+        if (flatToolpath.size() > 0) {
+        const float worldSpeed = 5.0f; // units per second
+        
+        auto now = std::chrono::high_resolution_clock::now();
+        float deltaTime = std::chrono::duration<float>(now - lastUpdate).count();
+        lastUpdate = now;
+        
+        static float segmentProgress = 0.0f;
+        
+        while (deltaTime > 0.0f && !flatToolpath.empty()) {
+            Line& line = flatToolpath[currentLineIndex];
+            float segmentLength = Vector3Distance(line.startLinePoint.Position, line.endLinePoint.Position);
+        
+            // Protect against degenerate zero-length lines
+            if (segmentLength < 0.0001f) {
+                currentLineIndex = (currentLineIndex + 1) % flatToolpath.size();
+                segmentProgress = 0.0f;
+                continue;
+            }
+        
+            float duration = segmentLength / worldSpeed;
+            float progressIncrement = deltaTime / duration;
+            segmentProgress += progressIncrement;
+        
+            if (segmentProgress >= 1.0f) {
+                deltaTime = (segmentProgress - 1.0f) * duration; // leftover time carries into next line
+                segmentProgress = 0.0f;
+                currentLineIndex = (currentLineIndex + 1) % flatToolpath.size();
+            } else {
+                deltaTime = 0.0f; // finished for now
+            }
+        }
+
+        // Render the current segment
+        Line& activeLine = flatToolpath[currentLineIndex];
+        Vector3 pos = Vector3Lerp(activeLine.startLinePoint.Position, activeLine.endLinePoint.Position, segmentProgress);
+        Vector3 norm = Vector3Normalize(Vector3Lerp(activeLine.startLinePoint.Normal, activeLine.endLinePoint.Normal, segmentProgress));
+        Vector3 endPos = Vector3Add(pos, Vector3Scale(norm, 0.3f));
+
+        DrawCylinderEx(pos, endPos, 0.05f, 0.05f, 8, YELLOW);
+        DrawText(TextFormat("Line: %d / %d", (int)currentLineIndex, (int)flatToolpath.size()), 10, 50, 20, WHITE);
+        DrawText(TextFormat("Segment progress: %.2f", segmentProgress), 10, 70, 20, WHITE);
+        }
+
+        slicing.Comp_Axis_Guides_3D();
+        slicing.Comp_Ground_Grid();
 
 
         // models.Run_Models();
