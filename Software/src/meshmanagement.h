@@ -17,8 +17,8 @@ struct multimodel{
 };
 
 struct Point{
-    Vector3 Position;
-    Vector3 Normal;
+    Vector3 Position = {0, 0, 0};
+    Vector3 Normal = {0, 0, 0};
 };
 
 struct Triangle{
@@ -30,9 +30,9 @@ struct Triangle{
 struct Line{
     Point startLinePoint;
     Point endLinePoint;
-    int type; // 1 = Surface, 2 = Movement
-    int meshNo;
-    int islandNo;
+    int type = 0; // 0 = Nothing Selected, 1 = Surface, 2 = Movement
+    int meshNo = 0;
+    int islandNo = 0;
 };
 
 struct Lines{
