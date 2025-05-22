@@ -548,32 +548,46 @@ std::vector<std::vector<Line>> slice::Add_Start_End_Positions(std::vector<std::v
     Vector3 Ending_Pos = Settings_Copy.Ending_Position.value3D;
     Vector3 Ending_Rot = Settings_Copy.Ending_Rotation.value3D;
 
-    Line Starting_Line = {
-        .startLinePoint = {
-            .Position = Starting_Pos,
-            .Normal   = Starting_Rot
-        },
-        .endLinePoint = {
-            .Position = All_ToolPaths.front().front().startLinePoint.Position,
-            .Normal   = All_ToolPaths.front().front().startLinePoint.Normal
-        }
-    };
+    Line Starting_Line, Ending_Line;
 
-    Line Ending_Line = {
-        .startLinePoint = {
-            .Position = All_ToolPaths.back().back().endLinePoint.Position,
-            .Normal   = All_ToolPaths.back().back().endLinePoint.Normal
-        },
-        .endLinePoint = {
-            .Position = Ending_Pos,
-            .Normal   = Ending_Rot
-        }
-    };
+    // Update position and normal seperately according to which one is in auto mode
+    if(Settings_Copy.Starting_Position.mode){
+        Starting_Line.startLinePoint.Position = All_ToolPaths.front().front().startLinePoint.Position;
+        Starting_Line.endLinePoint.Position   = All_ToolPaths.front().front().startLinePoint.Position;
+    }else{
+        Starting_Line.startLinePoint.Position = Starting_Pos;
+        Starting_Line.endLinePoint.Position   = All_ToolPaths.front().front().startLinePoint.Position;
+    }
+    
+    if(Settings_Copy.Starting_Rotation.mode){
+        Starting_Line.startLinePoint.Normal = All_ToolPaths.front().front().startLinePoint.Normal;
+        Starting_Line.endLinePoint.Normal   = All_ToolPaths.front().front().startLinePoint.Normal;
+    }else{
+        Starting_Line.startLinePoint.Normal = Starting_Rot;
+        Starting_Line.endLinePoint.Normal   = All_ToolPaths.front().front().startLinePoint.Normal;
+    }
+    
+    if(Settings_Copy.Ending_Position.mode){
+        Ending_Line.startLinePoint.Position = All_ToolPaths.back().back().endLinePoint.Position;
+        Ending_Line.endLinePoint.Position   = All_ToolPaths.back().back().endLinePoint.Position;
+    }else{
+        Ending_Line.startLinePoint.Position = All_ToolPaths.back().back().endLinePoint.Position;
+        Ending_Line.endLinePoint.Position   = Ending_Pos;
+    }
+    
+    if(Settings_Copy.Ending_Rotation.mode){
+        Ending_Line.startLinePoint.Normal = All_ToolPaths.back().back().endLinePoint.Normal;
+        Ending_Line.endLinePoint.Normal   = All_ToolPaths.back().back().endLinePoint.Normal;
+    }else{
+        Ending_Line.startLinePoint.Normal = All_ToolPaths.back().back().endLinePoint.Normal;
+        Ending_Line.endLinePoint.Normal   = Ending_Rot;
+    }
 
     std::vector<Line> Starting_Line_Vector = {Starting_Line};
     std::vector<Line> Ending_Line_Vector   = {Ending_Line};
 
-    if(Settings_Copy.Starting_Position.mode){
+    if( Settings_Copy.Starting_Position.mode && Settings_Copy.Starting_Rotation.mode &&
+        Settings_Copy.Ending_Position.mode   && Settings_Copy.Ending_Rotation.mode      ){
         return All_ToolPaths;
     }else{
         All_ToolPaths.insert(All_ToolPaths.begin(), Starting_Line_Vector);
