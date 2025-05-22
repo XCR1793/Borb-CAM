@@ -770,6 +770,17 @@ std::vector<std::vector<Line>> slice::Interpolate_Max_Angle_Displacement(std::ve
     return Result;
 }
 
+std::vector<Line> slice::Toolpath_Flattener(std::vector<std::vector<Line>>& ToolPaths){
+    if(ToolPaths.empty()){return {};}
+    std::vector<Line> Flattened_Toolpath;
+
+    for(const auto& segment : ToolPaths){
+        Flattened_Toolpath.insert(Flattened_Toolpath.end(), segment.begin(), segment.end());
+    }
+
+    return Flattened_Toolpath;
+}
+
 /**##########################################
  * #        Slicing Tools (Buffered)        #
  * ##########################################*/
@@ -818,4 +829,8 @@ std::vector<std::vector<Line>> slice::Add_Start_End_Positions(){
 std::vector<std::vector<Line>> slice::Interpolate_Max_Angle_Displacement(){
     Current_Toolpath = Interpolate_Max_Angle_Displacement(Current_Toolpath);
     return Current_Toolpath;
+}
+
+std::vector<Line> slice::Toolpath_Flattener(){
+    return Toolpath_Flattener(Current_Toolpath);
 }

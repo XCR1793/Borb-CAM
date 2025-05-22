@@ -77,11 +77,11 @@ struct Settings{
     Setting_Values SlicingEndDistance = {.mode = 1};          // Mode 1 means its Auto (mode, value) only
     float Max_Speed = 100.0f;               // 100mm/s default
     float Max_Acceleration = 2000.0f;       // 2000mm/s^2 default
-    float Max_Angular_Increment = 0.001f; // 0.0872664625f;    // 5 Deg in rad increments (Max amount of turn per action)
+    float Max_Angular_Increment = 0.0872664625f;    // 5 Deg in rad increments (Max amount of turn per action)
     Setting_Values Starting_Position = {.mode = 1}; // Mode 1 = Auto (start where it is), (mode, value3D, increment) only
     Setting_Values Starting_Rotation = {.mode = 1}; // Mode 1 = Auto (start where it is), (mode, value3D, increment) only
-    Setting_Values Ending_Position = {.mode = 1}; // Mode 1 = Auto (finish where it is), (mode, value3D, increment) only
-    Setting_Values Ending_Rotation = {.mode = 1}; // Mode 1 = Auto (finish where it is), (mode, value3D, increment) only
+    Setting_Values Ending_Position = {.mode = 1};   // Mode 1 = Auto (finish where it is), (mode, value3D, increment) only
+    Setting_Values Ending_Rotation = {.mode = 1};   // Mode 1 = Auto (finish where it is), (mode, value3D, increment) only
 
     // Visualisation Settings
     Setting_Actions Axis_Guides_3D = Setting_Actions::Enable; // X Y Z Guides in 3D Space (Enable/Disable) only
@@ -206,7 +206,9 @@ class slice{
     std::vector<std::vector<Line>> Optimise_Start_End_Linkages(std::vector<std::vector<Line>>& ToolPaths);
     std::vector<std::vector<Line>> Add_Start_End_Positions(std::vector<std::vector<Line>>& ToolPaths);
     std::vector<std::vector<Line>> Interpolate_Max_Angle_Displacement(std::vector<std::vector<Line>>& ToolPaths);
-
+    
+    std::vector<Line> Toolpath_Flattener(std::vector<std::vector<Line>>& ToolPaths);
+    
     /**##########################################
      * #        Slicing Tools (Buffered)        #
      * ##########################################*/
@@ -222,6 +224,7 @@ class slice{
     std::vector<std::vector<Line>> Add_Start_End_Positions();
     std::vector<std::vector<Line>> Interpolate_Max_Angle_Displacement();
 
+    std::vector<Line> Toolpath_Flattener();
 
     private:
     Settings config;
