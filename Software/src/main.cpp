@@ -62,7 +62,7 @@ int main(){
     window.Initialise_Lights(shader);
     window.Create_File("src/Debug", "txt");
 
-    window.Add_Button(1, 10, 50, 10, 10, "Slice");
+    window.Add_Button(1, 40, 100, 10, 50, "Slice");
 
     mesh models;
     models.Add_Model(1, "src/model.obj");
@@ -87,12 +87,13 @@ int main(){
         ClearBackground(DARKGRAY);
 
         if(window.Ret_Button(1)){
-            toolpath.clear();
-            toolpath = slicing.Generate_Surface_Toolpath(newmodel);
-            toolpath = slicing.Cull_Toolpath_by_Box(toolpath, cullBox);
-            toolpath = slicing.Optimise_Start_End_Positions(toolpath);
-            toolpath = slicing.Apply_AABB_Rays(toolpath, GetModelBoundingBox(currentmodel));
-            toolpath = slicing.Optimise_Start_End_Linkages(toolpath);
+            slicing.Clear_Toolpath();
+            slicing.Generate_Surface_Toolpath(newmodel);
+            slicing.Cull_Toolpath_by_Box(cullBox);
+            slicing.Optimise_Start_End_Positions();
+            slicing.Apply_AABB_Rays(GetModelBoundingBox(currentmodel));
+            slicing.Optimise_Start_End_Linkages();
+            toolpath = slicing.Return_Toolpath();
         }
 
         BeginMode3D(camera);

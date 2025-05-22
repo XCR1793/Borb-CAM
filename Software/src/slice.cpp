@@ -384,7 +384,10 @@ std::vector<std::vector<Line>> slice::Generate_Surface_Toolpath(Model model){
             if(!result.empty()){All_Slices.push_back(result);}
         }
     }
-    
+
+    // Apply Slice to self stored toolpath 
+    Current_Toolpath.insert(Current_Toolpath.end(), All_Slices.begin(), All_Slices.end());
+
     // Return Surface Toolpath (Using this output RAW isnt recommended)
     return All_Slices;
 }
@@ -529,4 +532,44 @@ std::vector<std::vector<Line>> slice::Optimise_Start_End_Linkages(std::vector<st
     }
 
     return OptimisedPaths;
+}
+
+/**##########################################
+ * #        Slicing Tools (Buffered)        #
+ * ##########################################*/
+
+std::vector<std::vector<Line>> slice::Clear_Toolpath(){
+    Current_Toolpath.clear();
+    return Current_Toolpath;
+}
+
+std::vector<std::vector<Line>> slice::Load_Toolpath(std::vector<std::vector<Line>>& ToolPaths){
+    if(ToolPaths.empty()){return ToolPaths;}
+    Current_Toolpath.clear();
+    Current_Toolpath = ToolPaths;
+    return Current_Toolpath;
+}
+
+std::vector<std::vector<Line>> slice::Return_Toolpath(){
+    return Current_Toolpath;
+}
+
+std::vector<std::vector<Line>> slice::Cull_Toolpath_by_Box(BoundingBox cullBox){
+    Current_Toolpath = Cull_Toolpath_by_Box(Current_Toolpath, cullBox);
+    return Current_Toolpath;
+}
+
+std::vector<std::vector<Line>> slice::Apply_AABB_Rays(BoundingBox AABB_Box){
+    Current_Toolpath = Apply_AABB_Rays(Current_Toolpath, AABB_Box);
+    return Current_Toolpath;
+}
+
+std::vector<std::vector<Line>> slice::Optimise_Start_End_Positions(){
+    Current_Toolpath = Optimise_Start_End_Positions(Current_Toolpath);
+    return Current_Toolpath;
+}
+
+std::vector<std::vector<Line>> slice::Optimise_Start_End_Linkages(){
+    Current_Toolpath = Optimise_Start_End_Linkages(Current_Toolpath);
+    return Current_Toolpath;
 }

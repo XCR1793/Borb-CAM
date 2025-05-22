@@ -186,18 +186,31 @@ class slice{
      * ##########################################*/
 
     std::vector<std::vector<Line>> Generate_Surface_Toolpath(Model model);
-
     std::vector<std::vector<Line>> Cull_Toolpath_by_Box(std::vector<std::vector<Line>>& ToolPaths, BoundingBox cullBox);
-
     std::vector<std::vector<Line>> Apply_AABB_Rays(std::vector<std::vector<Line>>& ToolPaths, BoundingBox AABB_Box);
-
     std::vector<std::vector<Line>> Optimise_Start_End_Positions(std::vector<std::vector<Line>>& ToolPaths);
-    
     std::vector<std::vector<Line>> Optimise_Start_End_Linkages(std::vector<std::vector<Line>>& ToolPaths);
+    std::vector<std::vector<Line>> Add_Start_End_Positions(std::vector<std::vector<Line>>& ToolPaths);
+
+    /**##########################################
+     * #        Slicing Tools (Buffered)        #
+     * ##########################################*/
+
+    std::vector<std::vector<Line>> Clear_Toolpath();
+    std::vector<std::vector<Line>> Load_Toolpath(std::vector<std::vector<Line>>& ToolPaths);
+    std::vector<std::vector<Line>> Return_Toolpath();
+
+    std::vector<std::vector<Line>> Cull_Toolpath_by_Box(BoundingBox cullBox);
+    std::vector<std::vector<Line>> Apply_AABB_Rays(BoundingBox AABB_Box);
+    std::vector<std::vector<Line>> Optimise_Start_End_Positions();
+    std::vector<std::vector<Line>> Optimise_Start_End_Linkages();
+
+
 
     private:
     Settings config;
     mesh mesh_Class;
+    std::vector<std::vector<Line>> Current_Toolpath;
 
 };
 
