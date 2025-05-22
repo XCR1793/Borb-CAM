@@ -14,6 +14,34 @@ float slice::distance_to_plane(Vector3 point, Vector4 Coeff_abcd){
     return ((Coeff_abcd.x*point.x)+(Coeff_abcd.y*point.y)+(Coeff_abcd.z*point.z)-Coeff_abcd.w)/(sqrt((Coeff_abcd.x*Coeff_abcd.x)+(Coeff_abcd.y*Coeff_abcd.y)+(Coeff_abcd.z*Coeff_abcd.z)));
 }
 
+Vector3 slice::rotate_Vector(Vector3 A, Vector3 B, float rotation_radians){
+    // Normalize both input vectors
+    A = Vector3Normalize(A);
+    B = Vector3Normalize(B);
+
+    // Compute angle between A and B
+    float cosPhi = Clamp(Vector3DotProduct(A, B), -1.0f, 1.0f);
+    float phi = acosf(cosPhi); // Total angle between A and B
+
+    // Handle edge cases
+    if(phi == 0.0f){return A;}             // Already aligned
+    if(rotation_radians >= phi){return B;} // Go fully to B
+
+    // SLERP weights
+    float sinPhi = sinf(phi);
+    float weightA = sinf(phi - rotation_radians) / sinPhi;
+    float weightB = sinf(rotation_radians) / sinPhi;
+
+    // Interpolated result
+    Vector3 result = {
+        weightA * A.x + weightB * B.x,
+        weightA * A.y + weightB * B.y,
+        weightA * A.z + weightB * B.z
+    };
+
+    return Vector3Normalize(result); // Ensure it's still a unit vector
+}
+
 /**##########################################
  * #            Algorithms Tools            #
  * ##########################################*/
@@ -140,6 +168,39 @@ std::vector<Line> slice::Modify_Starting_Pos(std::vector<Line>& Vector, int star
 
     return result;
 }
+
+std::vector<Line> slice::Interpolate_Normal_Angles(Line A, Line B, const float Max_Angle_Displacement){
+    float angle_displacement = Vector3Angle(A.endLinePoint.Normal, B.startLinePoint.Normal);
+    if(angle_displacement <= Max_Angle_Displacement){return {};}
+
+    std::vector<Line> Interpolated_Angles;
+
+    int steps = (int)(angle_displacement / Max_Angle_Displacement);
+    if(steps <= 0){return {};}
+
+    Line Increments;
+    Increments.startLinePoint.Position = A.endLinePoint.Position;
+    Increments.endLinePoint.Position   = A.startLinePoint.Position;
+    Increments.type     = 3; // Temp for Testing
+    Increments.meshNo   = A.meshNo;
+    Increments.islandNo = A.islandNo;
+
+    for(int i = 1; i <= steps; ++i){
+        Increments.startLinePoint.Normal = rotate_Vector(A.endLinePoint.Normal, B.startLinePoint.Normal, Max_Angle_Displacement * i);
+        Interpolated_Angles.push_back(Increments);
+    }
+
+    for(size_t j = 0; j < Interpolated_Angles.size(); ++j){
+        if(j < Interpolated_Angles.size() - 1){
+            Interpolated_Angles[j].endLinePoint = Interpolated_Angles[j + 1].startLinePoint;
+        }else{
+            Interpolated_Angles[j].endLinePoint = B.startLinePoint;
+        }
+    }
+
+    return Interpolated_Angles;
+}
+
 
 /**##########################################
  * #             System Settings            #
@@ -669,6 +730,46 @@ std::vector<std::vector<Line>> slice::Add_Start_End_Positions(std::vector<std::v
     return All_ToolPaths;
 }
 
+std::vector<std::vector<Line>> slice::Interpolate_Max_Angle_Displacement(std::vector<std::vector<Line>>& ToolPaths){
+    if(ToolPaths.empty()){return ToolPaths;}
+
+    // Local Copy of Settings
+    Settings Settings_Copy = config;
+    float Max_Angle = Settings_Copy.Max_Angular_Increment;
+
+    std::vector<std::vector<Line>> Result;
+    Result.reserve(ToolPaths.size());
+
+    // Walk through each top-level toolpath
+    for(size_t i = 0; i < ToolPaths.size(); ++i){
+        const std::vector<Line>& currentSlice = ToolPaths[i];
+        std::vector<Line> processedSlice;
+
+        for(size_t j = 0; j < currentSlice.size(); ++j) {
+            const Line& currentLine = currentSlice[j];
+            processedSlice.push_back(currentLine);
+
+            // Determine if a next line exists (could be in same slice or next one)
+            bool nextInSameSlice = (j + 1 < currentSlice.size());
+            bool nextInNextSlice = (!nextInSameSlice && i + 1 < ToolPaths.size() && !ToolPaths[i + 1].empty());
+
+            if (nextInSameSlice || nextInNextSlice) {
+                Line nextLine = nextInSameSlice ? currentSlice[j + 1] : ToolPaths[i + 1][0];
+
+                // Interpolate normals from currentLine.end → nextLine.start
+                std::vector<Line> interpolated = Interpolate_Normal_Angles(currentLine, nextLine, Max_Angle);
+                if (!interpolated.empty()) {
+                    processedSlice.insert(processedSlice.end(), interpolated.begin(), interpolated.end());
+                }
+            }
+        }
+
+        Result.push_back(processedSlice);
+    }
+
+    return Result;
+}
+
 /**##########################################
  * #        Slicing Tools (Buffered)        #
  * ##########################################*/
@@ -711,5 +812,10 @@ std::vector<std::vector<Line>> slice::Optimise_Start_End_Linkages(){
 
 std::vector<std::vector<Line>> slice::Add_Start_End_Positions(){
     Current_Toolpath = Add_Start_End_Positions(Current_Toolpath);
+    return Current_Toolpath;
+}
+
+std::vector<std::vector<Line>> slice::Interpolate_Max_Angle_Displacement(){
+    Current_Toolpath = Interpolate_Max_Angle_Displacement(Current_Toolpath);
     return Current_Toolpath;
 }

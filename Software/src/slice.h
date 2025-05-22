@@ -77,7 +77,7 @@ struct Settings{
     Setting_Values SlicingEndDistance = {.mode = 1};          // Mode 1 means its Auto (mode, value) only
     float Max_Speed = 100.0f;               // 100mm/s default
     float Max_Acceleration = 2000.0f;       // 2000mm/s^2 default
-    float Max_Angular_Increment = 0.0872664625f;    // 5 Deg in rad increments (Max amount of turn per action)
+    float Max_Angular_Increment = 0.001f; // 0.0872664625f;    // 5 Deg in rad increments (Max amount of turn per action)
     Setting_Values Starting_Position = {.mode = 1}; // Mode 1 = Auto (start where it is), (mode, value3D, increment) only
     Setting_Values Starting_Rotation = {.mode = 1}; // Mode 1 = Auto (start where it is), (mode, value3D, increment) only
     Setting_Values Ending_Position = {.mode = 1}; // Mode 1 = Auto (finish where it is), (mode, value3D, increment) only
@@ -120,6 +120,9 @@ class slice{
     // Distance to Plane
     float distance_to_plane(Vector3 point, Vector4 Coeff_abcd);
 
+    // New Vector that is a certain angle from Vector A but lies in the plane between Vector A and B
+    Vector3 rotate_Vector(Vector3 A, Vector3 B, float rotation_radians);
+
     /**##########################################
      * #            Algorithms Tools            #
      * ##########################################*/
@@ -139,6 +142,8 @@ class slice{
     std::vector<Line> Flip_Vector(std::vector<Line>& Vector);
 
     std::vector<Line> Modify_Starting_Pos(std::vector<Line>& Vector, int starting_id);
+
+    std::vector<Line> Interpolate_Normal_Angles(Line A, Line B, const float Max_Angle_Displacement);
 
     /**##########################################
      * #             System Settings            #
@@ -200,6 +205,7 @@ class slice{
     std::vector<std::vector<Line>> Optimise_Start_End_Positions(std::vector<std::vector<Line>>& ToolPaths);
     std::vector<std::vector<Line>> Optimise_Start_End_Linkages(std::vector<std::vector<Line>>& ToolPaths);
     std::vector<std::vector<Line>> Add_Start_End_Positions(std::vector<std::vector<Line>>& ToolPaths);
+    std::vector<std::vector<Line>> Interpolate_Max_Angle_Displacement(std::vector<std::vector<Line>>& ToolPaths);
 
     /**##########################################
      * #        Slicing Tools (Buffered)        #
@@ -214,7 +220,7 @@ class slice{
     std::vector<std::vector<Line>> Optimise_Start_End_Positions();
     std::vector<std::vector<Line>> Optimise_Start_End_Linkages();
     std::vector<std::vector<Line>> Add_Start_End_Positions();
-
+    std::vector<std::vector<Line>> Interpolate_Max_Angle_Displacement();
 
 
     private:
