@@ -270,6 +270,19 @@ slice& slice::Toggle_Axis_Guides_3D(const Setting_Actions Enable_Disable){
     return *this;
 }
 
+slice& slice::Toggle_Ground_Grid(const Setting_Actions Enable_Disable){
+    switch(Enable_Disable){
+        case Setting_Actions::Enable:
+        case Setting_Actions::Disable:
+            config.Ground_Grid = Enable_Disable;
+            break;
+        default:
+            std::cout << "Axis Guides can only be Enabled or Disabled" << std::endl;
+            break;
+    }
+    return *this;
+}
+
 slice& slice::Set_Gcode_Rotation_Order(const Gcode_Rotation_Order Gcode_Rotation_Order){
     switch(Gcode_Rotation_Order){
         case Gcode_Rotation_Order::ABC:
@@ -284,6 +297,64 @@ slice& slice::Set_Gcode_Rotation_Order(const Gcode_Rotation_Order Gcode_Rotation
             std::cout << "Rotation order must be one of the following: ABC, ACB, BAC, BCA, CAB, CBA" << std::endl;
     }
     return *this;
+}
+
+/**##########################################
+ * #         Visualisation Settings         #
+ * ##########################################*/
+
+void slice::Comp_Axis_Guides_3D(){
+    Settings Settings_Copy = config;
+    if(Settings_Copy.Axis_Guides_3D == Setting_Actions::Enable){
+        const float AxisLength = 10000.0f;
+        DrawLine3D((Vector3){0, 0, 0}, (Vector3){ AxisLength, 0, 0 }, Settings_Copy.Axis_Guides_3D_X_P);
+        DrawLine3D((Vector3){0, 0, 0}, (Vector3){-AxisLength, 0, 0 }, Settings_Copy.Axis_Guides_3D_X_N);
+
+        DrawLine3D((Vector3){0, 0, 0}, (Vector3){0,  AxisLength, 0 }, Settings_Copy.Axis_Guides_3D_Y_P);
+        DrawLine3D((Vector3){0, 0, 0}, (Vector3){0, -AxisLength, 0 }, Settings_Copy.Axis_Guides_3D_Y_N);
+
+        DrawLine3D((Vector3){0, 0, 0}, (Vector3){0, 0,  AxisLength }, Settings_Copy.Axis_Guides_3D_Z_P);
+        DrawLine3D((Vector3){0, 0, 0}, (Vector3){0, 0, -AxisLength }, Settings_Copy.Axis_Guides_3D_Z_N);
+    }
+}
+
+void slice::Comp_Ground_Grid(){
+    Settings Settings_Copy = config;
+    if(Settings_Copy.Ground_Grid != Setting_Actions::Enable){return;}
+
+    float Grid_X_PN_Distance = Settings_Copy.Ground_Grid_Size.x;
+    float Grid_Z_PN_Distance = Settings_Copy.Ground_Grid_Size.y;
+
+    float MicroGrid_Size = Settings_Copy.Ground_Grid_Spacing/Settings_Copy.Ground_Grid_MicroSpacing_Count;
+
+    bool Enable_Start_Line = 1;
+    if(Settings_Copy.Axis_Guides_3D == Setting_Actions::Enable){Enable_Start_Line = 0;}
+
+    for(float i = 0; i < Grid_X_PN_Distance; i += Settings_Copy.Ground_Grid_Spacing){
+        if(!Enable_Start_Line && (i==0)){
+        }else{
+            DrawLine3D((Vector3){ i, 0, -Grid_Z_PN_Distance}, (Vector3){ i, 0, Grid_Z_PN_Distance}, Settings_Copy.Ground_Grid_Colour);
+            DrawLine3D((Vector3){-i, 0, -Grid_Z_PN_Distance}, (Vector3){-i, 0, Grid_Z_PN_Distance}, Settings_Copy.Ground_Grid_Colour);
+        }
+        
+        for(size_t j = 1; j < Settings_Copy.Ground_Grid_MicroSpacing_Count; j++){
+            DrawLine3D((Vector3){ i + (j * MicroGrid_Size), 0, -Grid_Z_PN_Distance}, (Vector3){ i + (j * MicroGrid_Size), 0, Grid_Z_PN_Distance}, Settings_Copy.Ground_Grid_MicroSpacing_Colour);
+            DrawLine3D((Vector3){-i - (j * MicroGrid_Size), 0, -Grid_Z_PN_Distance}, (Vector3){-i - (j * MicroGrid_Size), 0, Grid_Z_PN_Distance}, Settings_Copy.Ground_Grid_MicroSpacing_Colour);
+        }
+    }
+
+    for(float i = 0; i < Grid_Z_PN_Distance; i += Settings_Copy.Ground_Grid_Spacing){
+        if(!Enable_Start_Line && (i==0)){
+        }else{
+            DrawLine3D((Vector3){-Grid_Z_PN_Distance, 0, i }, (Vector3){Grid_Z_PN_Distance, 0, i }, Settings_Copy.Ground_Grid_Colour);
+            DrawLine3D((Vector3){-Grid_Z_PN_Distance, 0, -i}, (Vector3){Grid_Z_PN_Distance, 0, -i}, Settings_Copy.Ground_Grid_Colour);
+        }
+        
+        for(size_t j = 1; j < Settings_Copy.Ground_Grid_MicroSpacing_Count; j++){
+            DrawLine3D((Vector3){-Grid_Z_PN_Distance, 0, i + (j * MicroGrid_Size)}, (Vector3){Grid_Z_PN_Distance, 0, i + (j * MicroGrid_Size)}, Settings_Copy.Ground_Grid_MicroSpacing_Colour);
+            DrawLine3D((Vector3){-Grid_Z_PN_Distance, 0,-i - (j * MicroGrid_Size)}, (Vector3){Grid_Z_PN_Distance, 0,-i - (j * MicroGrid_Size)}, Settings_Copy.Ground_Grid_MicroSpacing_Colour);
+        }
+    }
 }
 
 /**##########################################

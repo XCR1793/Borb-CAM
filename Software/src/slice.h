@@ -10,19 +10,7 @@
 #include "meshmanagement.h"
 #include "pathing.h"
 
-// struct path_point{Vector3 position; Vector3 rotation; int point_number;};
 
-// struct vector_set{std::vector<path_point> point_list;};
-
-// struct vectors_per_mesh{std::vector<vector_set> mesh_vector_list; int id;};
-
-// struct vectors_per_model{std::vector<vectors_per_mesh> model_vector_list;};
-
-// struct paths{
-//     int id;
-//     vectors_per_model path_list;
-//     Vector4 slice_equation; // First 3: Rotation X Y Z, Last Digit: slice height
-// };
 
 enum TSP_Algorithm{
     Nearest_Neighbor
@@ -97,6 +85,19 @@ struct Settings{
 
     // Visualisation Settings
     Setting_Actions Axis_Guides_3D = Setting_Actions::Enable; // X Y Z Guides in 3D Space (Enable/Disable) only
+    Color Axis_Guides_3D_X_P = {255, 40, 40, 160};
+    Color Axis_Guides_3D_X_N = {160, 60, 60, 127};
+    Color Axis_Guides_3D_Y_P = {40, 255, 100, 160};
+    Color Axis_Guides_3D_Y_N = {60, 180, 80, 127};
+    Color Axis_Guides_3D_Z_P = {40, 80, 255, 160};
+    Color Axis_Guides_3D_Z_N = {60, 100, 180, 127};
+
+    Setting_Actions Ground_Grid = Setting_Actions::Enable; // 2D grid placed along the XZ Plane
+    Vector2 Ground_Grid_Size = {100, 100};
+    float Ground_Grid_Spacing = 10;
+    float Ground_Grid_MicroSpacing_Count = 10;
+    Color Ground_Grid_Colour = {120, 120, 120, 127};
+    Color Ground_Grid_MicroSpacing_Colour = {120, 120, 120, 50};
 
     // Output Settings
     std::string OutputDir = "src/";
@@ -159,8 +160,16 @@ class slice{
     slice& Set_Epsilon_Precision(const float& Epsilon_Precision);
 
     slice& Toggle_Axis_Guides_3D(const Setting_Actions Enable_Disable);
+    slice& Toggle_Ground_Grid(const Setting_Actions Enable_Disable);
 
     slice& Set_Gcode_Rotation_Order(const Gcode_Rotation_Order Gcode_Rotation_Order);
+
+    /**##########################################
+     * #         Visualisation Settings         #
+     * ##########################################*/
+
+    void Comp_Axis_Guides_3D();
+    void Comp_Ground_Grid();
 
     /**##########################################
      * #             Slicer Settings            #
