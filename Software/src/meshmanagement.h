@@ -93,6 +93,8 @@ class mesh{
 
     Vector3 PointToVec3(Point point);
 
+    Vector4 GetTrianglePlane(const Triangle& tri);
+
     /**##########################################
      * #          Mesh Helper Functions         #
      * ##########################################*/
@@ -118,6 +120,8 @@ class mesh{
     std::vector<Line> Chain_Walker(const std::vector<Line>& unordered);
 
     std::vector<Line> Flatten_Culled_Lines(BoundingBox box, const std::vector<Line>& lines, bool in_out);
+
+    std::pair<Point, bool> IntersectLineTriangle(const Line& line, const Triangle& tri);
 
     /**##########################################
      * #       Mesh Manipulation Functions      #
@@ -146,6 +150,8 @@ class mesh{
     std::vector<Lines> Cull_Lines_ByBox(BoundingBox box, const std::vector<Line>& lines, bool in_out);
 
     Point lastPoint(std::vector<Line> lineList, int startNo, bool direction);
+
+    std::vector<Point> IntersectLineModel(const Line& line, Model model);
 
     private:
 

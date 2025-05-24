@@ -221,6 +221,18 @@ Vector3 mesh::PointToVec3(Point point){
     return (Vector3){point.Position.x, point.Position.y, point.Position.z};
 }
 
+Vector4 mesh::GetTrianglePlane(const Triangle& tri){
+    Vector3 p0 = tri.Vertex1.Position;
+    Vector3 p1 = tri.Vertex2.Position;
+    Vector3 p2 = tri.Vertex3.Position;
+
+    Vector3 normal = Vector3Normalize(Vector3CrossProduct(Vector3Subtract(p1, p0), Vector3Subtract(p2, p0)));
+    float d = -Vector3DotProduct(normal, p0);
+
+    return (Vector4){normal.x, normal.y, normal.z, d};
+}
+
+
 /**##########################################
  * #          Mesh Helper Functions         #
  * ##########################################*/
@@ -285,66 +297,6 @@ Line mesh::Flip_Line(const Line& line){
     flipped.endLinePoint   = line.startLinePoint;
     return flipped;
 }
-
-// std::pair<std::pair<Point, Point>, bool> mesh::Intersect_Line_Box(Point startPoint, Point endPoint, BoundingBox box){
-//     Vector3 p0   = startPoint.Position;
-//     Vector3 dir  = Vector3Subtract(endPoint.Position, p0);
-//     float tmin   = 0.0f;
-//     float tmax   = 1.0f;
-//     Vector3 enterNormal = {};
-//     Vector3 exitNormal  = {};
-
-//     for(int i = 0; i < 3; i++){
-//         float start = ((float*)&p0)[i];
-//         float d     = ((float*)&dir)[i];
-//         float minB  = ((float*)&box.min)[i];
-//         float maxB  = ((float*)&box.max)[i];
-
-//         if(fabsf(d) < 1e-6f){
-//             if(start < minB || start > maxB){
-//                 return {{{}, {}}, false};
-//             }
-//         }else{
-//             float t0 = (minB - start) / d;
-//             float t1 = (maxB - start) / d;
-
-//             Vector3 thisEnter = {};
-//             Vector3 thisExit  = {};
-//             ((float*)&thisEnter)[i] = (d > 0) ? -1.0f : 1.0f;
-//             ((float*)&thisExit)[i]  = (d > 0) ?  1.0f : -1.0f;
-
-//             if(t0 > t1){
-//                 std::swap(t0, t1);
-//                 std::swap(thisEnter, thisExit);
-//             }
-
-//             if(t0 > tmin){
-//                 tmin = t0;
-//                 enterNormal = thisEnter;
-//             }
-//             if(t1 < tmax){
-//                 tmax = t1;
-//                 exitNormal = thisExit;
-//             }
-
-//             if(tmin > tmax){
-//                 return {{{}, {}}, false};
-//             }
-//         }
-//     }
-
-//     if(tmin <= 1.0f && tmax >= 0.0f){
-//         Vector3 entryPos = Vector3Add(p0, Vector3Scale(dir, tmin));
-//         Vector3 exitPos  = Vector3Add(p0, Vector3Scale(dir, tmax));
-
-//         Point entry = { .Position = entryPos, .Normal = enterNormal };
-//         Point exit  = { .Position = exitPos,  .Normal = exitNormal };
-
-//         return {{ entry, exit }, true};
-//     }
-
-//     return {{{}, {}}, false};
-// }
 
 std::pair<std::pair<Point, Point>, bool> mesh::Intersect_Line_Box(Point startPoint, Point endPoint, BoundingBox box){
     Vector3 p0   = startPoint.Position;
@@ -593,6 +545,43 @@ std::vector<Line> mesh::Flatten_Culled_Lines(BoundingBox box, const std::vector<
         flat.insert(flat.end(), group.lineList.begin(), group.lineList.end());
     }
     return flat;
+}
+
+std::pair<Point, bool> mesh::IntersectLineTriangle(const Line& line, const Triangle& tri){
+    // Step 1: Get the triangle's plane
+    Vector4 plane = GetTrianglePlane(tri);
+
+    // Step 2: Intersect line with triangle's plane
+    auto [intersectionPoint, hit] = IntersectLinePlane(plane, line.startLinePoint, line.endLinePoint);
+    if (!hit) return { {}, false };
+
+    // Step 3: Check if the point lies inside the triangle using barycentric coordinates
+    Vector3 P = intersectionPoint.Position;
+    Vector3 A = tri.Vertex1.Position;
+    Vector3 B = tri.Vertex2.Position;
+    Vector3 C = tri.Vertex3.Position;
+
+    Vector3 v0 = Vector3Subtract(B, A);
+    Vector3 v1 = Vector3Subtract(C, A);
+    Vector3 v2 = Vector3Subtract(P, A);
+
+    float d00 = Vector3DotProduct(v0, v0);
+    float d01 = Vector3DotProduct(v0, v1);
+    float d11 = Vector3DotProduct(v1, v1);
+    float d20 = Vector3DotProduct(v2, v0);
+    float d21 = Vector3DotProduct(v2, v1);
+
+    float denom = d00 * d11 - d01 * d01;
+    if (fabsf(denom) < 1e-6f) return { {}, false }; // Degenerate triangle
+
+    float v = (d11 * d20 - d01 * d21) / denom;
+    float w = (d00 * d21 - d01 * d20) / denom;
+    float u = 1.0f - v - w;
+
+    bool inside = (u >= 0.0f && v >= 0.0f && w >= 0.0f && u <= 1.0f && v <= 1.0f && w <= 1.0f);
+    if (!inside) return { {}, false };
+
+    return { intersectionPoint, true };
 }
 
 /**##########################################
@@ -954,6 +943,24 @@ Point mesh::lastPoint(std::vector<Line> lineList, int startNo, bool direction){
     }
 
     return expected;
+}
+
+std::vector<Point> mesh::IntersectLineModel(const Line& line, Model model) {
+    std::vector<Point> intersections;
+
+    // Get all triangles in the model (grouped per mesh)
+    std::vector<std::vector<std::pair<int, Triangle>>> triangleGroups = List_Triangles(model);
+
+    for (const auto& meshTriangles : triangleGroups) {
+        for (const auto& [index, tri] : meshTriangles) {
+            auto [point, hit] = IntersectLineTriangle(line, tri);
+            if (hit) {
+                intersections.push_back(point);
+            }
+        }
+    }
+
+    return intersections;
 }
 
 /**##########################################
