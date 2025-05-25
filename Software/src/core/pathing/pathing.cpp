@@ -287,10 +287,6 @@ bool path::Gcode_to_Path(const std::string& fileName, const std::string& extensi
         if (line.find("G0") == std::string::npos && line.find("G1") == std::string::npos)
             continue;
 
-        // Track which components are explicitly set on this line
-        bool hasX = false, hasY = false, hasZ = false;
-        bool hasA = false, hasB = false, hasC = false;
-
         float x = currentPos.x, y = currentPos.y, z = currentPos.z;
         float a = currentRot.x, b = currentRot.y, c = currentRot.z;
 
@@ -312,12 +308,12 @@ bool path::Gcode_to_Path(const std::string& fileName, const std::string& extensi
             try {
                 float value = std::stof(valueStr);
                 switch (prefix) {
-                    case 'X': x = value; hasX = true; break;
-                    case 'Y': y = value; hasY = true; break;
-                    case 'Z': z = value; hasZ = true; break;
-                    case 'A': a = value; hasA = true; break;
-                    case 'B': b = value; hasB = true; break;
-                    case 'C': c = value; hasC = true; break;
+                    case 'X': x = value; break;
+                    case 'Y': y = value; break;
+                    case 'Z': z = value; break;
+                    case 'A': a = value; break;
+                    case 'B': b = value; break;
+                    case 'C': c = value; break;
                 }
             } catch (...) {
                 // ignore malformed values

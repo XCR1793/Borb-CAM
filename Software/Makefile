@@ -35,9 +35,8 @@ ifeq ($(PLATFORM),WINDOWS)
 endif
 
 # ===================== INCLUDE & LIBS =====================
-# Cross-platform include path expansion
 ifeq ($(PLATFORM),WINDOWS)
-    SRC_DIRS := $(wildcard src/*) $(wildcard src/*/*)
+    SRC_DIRS := $(wildcard src/*) $(wildcard src/*/*) $(wildcard src/*/*/*)
 else
     SRC_DIRS := $(shell find src -type d)
 endif
