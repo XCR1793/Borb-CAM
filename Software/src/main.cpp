@@ -5,10 +5,10 @@
 #include <string>
 #include <raylib.h>
 #include <raymath.h>
-#include "appmanagement.h"
-#include "meshmanagement.h"
-#include "pathing.h"
-#include "slice.h"
+#include <appmanagement.h>
+#include <meshmanagement.h>
+#include <pathing.h>
+#include <slice.h>
 
 #ifndef RAYGUI_IMPLEMENTATION
     #define RAYGUI_IMPLEMENTATION
@@ -56,22 +56,22 @@ Color LerpColor(Color a, Color b, float t) {
 
 int main(){
     app window;
-    window.Initialise_Window(1000, 1500, 60, "Borb CAM Slicer", "src/Logo-Light.png");
+    window.Initialise_Window(1000, 1500, 60, "Borb CAM Slicer", "src/assets/Logo-Light.png");
     Camera camera = window.Initialise_Camera((Vector3){20.0f, 20.0f, 20.0f}, (Vector3){0.0f, 8.0f, 0.0f}, (Vector3){0.0f, 1.6f, 0.0f},45.0f, CAMERA_PERSPECTIVE);
     Shader shader = window.Initialise_Shader();
     window.Initialise_Lights(shader);
-    window.Create_File("src/Debug", "txt");
+    window.Create_File("src/output/Debug", "txt");
 
     window.Add_Button(1, 40, 100, 10, 50, "Slice");
 
     mesh models;
-    models.Add_Model(1, "src/model.obj");
+    models.Add_Model(1, "src/models/model.obj");
     Model currentmodel = models.Ret_Model(1);
     Model newmodel = Move_Model(Scale_Model(currentmodel, 0.1), (Vector3){0, -0.5, 0});
     BoundingBox cullBox = { Vector3{-5, -4, -5}, Vector3{5, 0, 5} };
 
     path paths;
-    paths.Create_File("src/OwO", "nc");
+    paths.Create_File("src/output/OwO", "nc");
 
     std::vector<std::pair<Vector3, Vector3>> pathPositions;
     std::vector<std::vector<Line>> toolpath;
