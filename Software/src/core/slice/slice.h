@@ -195,6 +195,8 @@ class slice{
     slice& Set_Ending_Position(const Setting_Values& Position);
     slice& Set_Ending_Rotation(const Setting_Values& Rotation);
 
+    Settings return_Settings();
+
     /**##########################################
      * #              Slicing Tools             #
      * ##########################################*/
