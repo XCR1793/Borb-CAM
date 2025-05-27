@@ -489,6 +489,10 @@ slice& slice::Set_Ending_Rotation(const Setting_Values& Rotation){
     return *this;
 }
 
+void slice::import_Settings(Settings setting){
+    config = setting;
+}
+
 Settings slice::return_Settings(){
     return config;
 }
