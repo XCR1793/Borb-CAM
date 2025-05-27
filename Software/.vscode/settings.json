@@ -79,6 +79,7 @@
 		"stop_token": "cpp",
 		"thread": "cpp",
 		"codecvt": "cpp",
-		"ranges": "cpp"
+		"ranges": "cpp",
+		"*.m": "cpp"
 	}
 }

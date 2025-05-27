@@ -9,6 +9,7 @@
 #include <meshmanagement.h>
 #include <pathing.h>
 #include <slice.h>
+#include <backend.h>
 
 #ifndef RAYGUI_IMPLEMENTATION
     #define RAYGUI_IMPLEMENTATION
