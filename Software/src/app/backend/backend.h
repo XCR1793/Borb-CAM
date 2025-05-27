@@ -42,6 +42,8 @@ class backend{
         halt();  // Makes sure thread is joined before backend is destroyed
     }
 
+    slice slicing_tools;
+
     /**##########################################
      * #              API commands              #
      * ##########################################*/
@@ -66,6 +68,9 @@ class backend{
     void clear_schedule();
 
     // Run the schedule
+    void run_schedule();
+
+    // Run the program
     void run();
 
     // Halt all processes and shutdown all current threads
@@ -94,6 +99,7 @@ class backend{
     std::mutex dataMutex;
     bool run_is_Active = false;
     bool worker_finished = true;
+    bool start_run = false;
 
     // Thread Returns
     step Current_Step = Unknown_Instruction;
@@ -101,8 +107,7 @@ class backend{
 
     // System Variables
     Toolpath_Data system_data_;
-    slice slicing_tools;
-    int unique_id;
+    int unique_id = 0;
 };
 
 #endif

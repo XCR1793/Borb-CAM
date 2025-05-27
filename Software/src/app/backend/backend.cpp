@@ -72,14 +72,22 @@ void backend::clear_schedule(){
     system_data_.queue.clear();
 }
 
+void backend::run_schedule(){
+    start_run = true;
+    backend::run();
+}
+
 void backend::run(){
     std::lock_guard<std::mutex> lock(dataMutex);
 
     // Start worker thread if not active and finished
-    if(!run_is_Active && worker_finished){
+    if(!run_is_Active && worker_finished && start_run){
+        start_run = false;
         run_is_Active = true;
         worker_finished = false;
         workerThread = std::thread(&backend::worker, this);
+        std::cout << "=========================== Run Started ===========================" << std::endl;
+        std::cout << "Queue Size: " << system_data_.queue.size() << std::endl;
         return;
     }
 
@@ -89,6 +97,8 @@ void backend::run(){
             workerThread.join();
         }
         run_is_Active = false;
+        std::cout << "Steps Run: " << Worker_step << std::endl;
+        std::cout << "=========================== Run Finished ===========================" << std::endl;
     }
 }
 
@@ -119,7 +129,7 @@ bool backend::return_run_status(){
 
 bool backend::return_worker_status(){
     std::lock_guard<std::mutex> lock(dataMutex);
-    return run_is_Active;
+    return worker_finished;
 }
 
 /**##########################################
@@ -127,25 +137,31 @@ bool backend::return_worker_status(){
  * ##########################################*/
 
 void backend::worker(){
-    for(size_t i = 0; i < system_data_.queue.size(); i++){
-        int unique_id_processing = 0;
+    size_t i = 0;
+    while(true){
+        step currentStep;
+        int unique_id_processing;
+
         {
             std::lock_guard<std::mutex> lock(dataMutex);
-            if(!run_is_Active){break;}
-            Current_Step = system_data_.queue[i].first;
-            unique_id_processing = system_data_.queue[i].first;
+            if(!run_is_Active || i >= system_data_.queue.size()){break;}
+
+            currentStep = system_data_.queue[i].first;
+            unique_id_processing = system_data_.queue[i].second;
+            Current_Step = currentStep;
             Worker_step = i;
         }
 
-        if(!perform_process(Current_Step, unique_id_processing)){break;}
+        if(!perform_process(currentStep, unique_id_processing)){break;}
 
         {
             std::lock_guard<std::mutex> lock(dataMutex);
             Worker_step++;
         }
+
+        i++;
     }
 
-    // Set finished flag inside mutex
     {
         std::lock_guard<std::mutex> lock(dataMutex);
         worker_finished = true;
