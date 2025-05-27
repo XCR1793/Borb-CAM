@@ -1,127 +1,143 @@
-#ifndef FRONTEND_H
-#define FRONTEND_H
+    #ifndef FRONTEND_H
+    #define FRONTEND_H
 
-#include <memory>
-#include <stdio.h>
-#include <stdlib.h>
-#include <chrono>
-#include <vector>
-#include <string>
-#include <raylib.h>
-#include <raygui.h>
-#include <raymath.h>
-#include <appmanagement.h>
-#include <backend.h>
+    #include <memory>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <chrono>
+    #include <vector>
+    #include <string>
+    #include <raylib.h>
+    #include <raygui.h>
+    #include <raymath.h>
+    #include <appmanagement.h>
+    #include <backend.h>
 
-struct GUI_Settings{
-    // Simple Window Setup
-    int window_height = 1000;
-    int window_width = 1500;
-    int window_framerate = 60;
-    const char *window_title = "Borb CAM Slicer";
-    const char *logo_file_location = "src/assets/Logo-Light.png";
+    struct GUI_Settings{
+        // Simple Window Setup
+        int window_height = 1000;
+        int window_width = 1500;
+        int window_framerate = 60;
+        const char *window_title = "Borb CAM Slicer";
+        const char *logo_file_location = "src/assets/Logo-Light.png";
 
-    // GUI Setup
-    Font font;
-    float panel_title_height = 30;
-    float text_spacing_standard = 20;
-    float button_height = 20;
-    float button_width = 60;
-    float button_spacing_x = 20;
-    float button_spacing_y = 20;
-};
+        // GUI Setup
+        Font font;
+        float panel_title_height = 30;
+        float text_spacing_standard = 20;
+        float button_height = 20;
+        float button_width = 60;
+        float button_spacing_x = 20;
+        float button_spacing_y = 20;
+    };
 
-struct per_button_Config{
-    const char* title = "default";
-    float increment = PI/8;
-    float default_value = 0;
-};
+    enum Button_Type{
+        Value, // Buttons with value that can increment
+        Value_Clamped, // Same as value but has min and max values
+        Toggle, // Togglable buttons
+        Temp, // Buttons that are temporary toggle on but goes straight off
+        Cycle, // Buttons that cycles through a list
+    };
 
-struct Button_Mini_Panel_config{
-    const char* title;
-    std::vector<int> button_ids;
-    float value = 0;
-    float increment = PI/8;
-};
+    struct per_button_Config{
+        const char* title = "default";
+        float increment = PI/8;
+        float default_value = 0;
+        Button_Type buttontype = Button_Type::Value;
+        float Min = 0;
+        float Max = 0;
+        std::vector<std::string> string_values;
+    };
 
-struct Mini_Panel_Config{
-    bool Title = true; // Enable or disable the title of the panel before the panels generate
-    Color Panel = RED; // colour in rgba
-    const char* title = "some title";
-    std::vector<Button_Mini_Panel_config> Button_Bar;// you can name the variable something better
-    float start_x = 0;
-    float start_y = 0;
-    float increment_x = 0;
-    float increment_y = 0;
-    float max_height = 30;
-    float max_width = 250;
-    float button_heights = 30;
-    float button_widths = 60;
-    Color panel_color = {0, 255, 127, 255}; // some colour (hsl + a)
-    Color color_increment = {5, 0, 0, 0}; // some colour to increment (hsl + a) per button_bar
-};
+    struct Button_Mini_Panel_config{
+        const char* title;
+        std::vector<int> button_ids;
+        Button_Type buttontype = Button_Type::Value;
+        float value = 0;
+        float increment = PI/8;
+        float Min = 0;
+        float Max = 0;
+        std::vector<std::string> string_values;
+    };
 
-class frontend{
-    public:
-    frontend(std::shared_ptr<backend> b);
-    ~frontend();
+    struct Mini_Panel_Config{
+        bool Title = true; // Enable or disable the title of the panel before the panels generate
+        Color Panel = RED; // colour in rgba
+        const char* title = "some title";
+        std::vector<Button_Mini_Panel_config> Button_Bar;// you can name the variable something better
+        float start_x = 0;
+        float start_y = 0;
+        float increment_x = 0;
+        float increment_y = 0;
+        float max_height = 30;
+        float max_width = 250;
+        float button_heights = 30;
+        float button_widths = 60;
+        Color panel_color = {0, 255, 127, 255}; // some colour (hsl + a)
+        Color color_increment = {5, 0, 0, 0}; // some colour to increment (hsl + a) per button_bar
+    };
 
-    /**##########################################
-     * #           Frontend Functions           #
-     * ##########################################*/
+    class frontend{
+        public:
+        frontend(std::shared_ptr<backend> b);
+        ~frontend();
 
-    void run(); // Frontend has its own thread
+        /**##########################################
+         * #           Frontend Functions           #
+         * ##########################################*/
 
-    void handle_input();
+        void run(); // Frontend has its own thread
 
-    private:
-    /**##########################################
-     * #            Helper Functions            #
-     * ##########################################*/
+        void handle_input();
 
-    void reset_int(int value);
-    int next_int();
+        private:
+        /**##########################################
+         * #            Helper Functions            #
+         * ##########################################*/
 
-    void set_float_increment(float increment_value);
-    void reset_float();
-    float next_float();
-    float curr_float();
+        void reset_int(int value);
+        int next_int();
 
-    /**##########################################
-     * #              GUI Helpers               #
-     * ##########################################*/
+        void set_float_increment(float increment_value);
+        void reset_float();
+        float next_float();
+        float curr_float();
 
-    void Initialise_Mini_Panel(int starting_id, Mini_Panel_Config& config, const std::vector<per_button_Config>& button_configs);
+        /**##########################################
+         * #              GUI Helpers               #
+         * ##########################################*/
 
-    void Draw_Mini_Panel(const std::vector<Mini_Panel_Config>& panels);
+        void Initialise_Mini_Panel(int starting_id, Mini_Panel_Config& config, const std::vector<per_button_Config>& button_configs);
 
-    void Handle_Mini_Panel(std::vector<Mini_Panel_Config>& panels);
+        void Draw_Mini_Panel(const std::vector<Mini_Panel_Config>& panels);
 
-    /**##########################################
-     * #           Frontend Functions           #
-     * ##########################################*/
+        void Handle_Mini_Panel(std::vector<Mini_Panel_Config>& panels);
 
-    void Initialise_Inputs();
+        /**##########################################
+         * #           Frontend Functions           #
+         * ##########################################*/
 
-    private:
-    std::shared_ptr<backend> backend_;
+        void Initialise_Inputs();
 
-    // Buffered Local Variables 
-    Settings buffered_setings;
+        private:
+        std::shared_ptr<backend> backend_;
 
-    // Thread Variables
-    std::thread mainThread;
-    std::mutex dataMutex;
+        // Buffered Local Variables 
+        Settings buffered_setings;
 
-    // App Variables
-    app window;
-    GUI_Settings gui_settings;
-    int button_id = 0;
-    float incremental = 0;
-    int float_value_increment = 0;
-    
-    Mini_Panel_Config mini_panel_config;
-    std::vector<Mini_Panel_Config> mini_panels;
-};
+        // Thread Variables
+        std::thread mainThread;
+        std::mutex dataMutex;
 
-#endif
+        // App Variables
+        app window;
+        GUI_Settings gui_settings;
+        int button_id = 0;
+        float incremental = 0;
+        int float_value_increment = 0;
+        
+        Mini_Panel_Config mini_panel_config;
+        std::vector<Mini_Panel_Config> mini_panels;
+    };
+
+    #endif
