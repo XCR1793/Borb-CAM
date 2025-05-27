@@ -105,11 +105,11 @@ int main(){
     std::vector<std::vector<Line>> toolpath;
 
     slice slicing;
-    slicing
-        .Set_Slicing_Plane((Vector2){PI/4, 0}, 0)
-        .Set_Slicing_Distance(0.1f)
-        .Set_Starting_Position((Setting_Values){.mode = 0, .value3D = (Vector3){10, 10, 0}})
-        .Set_Ending_Position((Setting_Values){.mode = 0, .value3D = (Vector3){0, 10, 10}});
+    // slicing
+        // .Set_Slicing_Plane((Vector2){PI/4, 0}, 0)
+        // .Set_Slicing_Distance(0.1f)
+        // .Set_Starting_Position((Setting_Values){.mode = 0, .value3D = (Vector3){10, 10, 0}})
+        // .Set_Ending_Position((Setting_Values){.mode = 0, .value3D = (Vector3){0, 10, 10}});
     
 
     size_t currentLineIndex = 0;
@@ -129,13 +129,16 @@ bool modelNeedsUpdate = true;
 bool modelVisible = true;
 bool showPath = true;
 bool showCombinedPath = true;
+bool load_done_toolpath = false;
 
     backend backend_;
+    backend_.slicing_tools
+        .Set_Slicing_Plane((Vector2){PI/4, 0}, 0)
+        .Set_Slicing_Distance(0.1f)
+        .Set_Starting_Position((Setting_Values){.mode = 0, .value3D = (Vector3){10, 10, 0}})
+        .Set_Ending_Position((Setting_Values){.mode = 0, .value3D = (Vector3){0, 10, 10}});
 
     while(!WindowShouldClose()){
-
-        backend_.run();
-        std::cout << backend_.return_value_Test() << std::endl;
 
         models.Sha_Model(1, shader);
         window.Update_Camera(&camera);
@@ -166,22 +169,26 @@ if (window.Ret_Button(16)) { planeOffset -= 0.05f; slicing.Set_Slicing_Plane(sli
 
 // === Slice Trigger ===
 if (window.Ret_Button(17)) {
-    slicing.Clear_Toolpath();
-    slicing.Generate_Surface_Toolpath(newmodel);
-    slicing.Cull_Toolpath_by_Box(cullBox);
-    slicing.Optimise_Start_End_Positions();
-    slicing.Apply_AABB_Rays(GetModelBoundingBox(newmodel));
-    slicing.Optimise_Start_End_Linkages();
-    slicing.Add_Start_End_Positions();
-    slicing.Interpolate_Max_Angle_Displacement();
-    toolpath = slicing.Return_Toolpath();
+    // Settings setting = slicing.return_Settings();
+    // backend_.set_settings(setting);
+    
+    backend_.clear_schedule();
+    backend_.set_model(newmodel);
+    backend_.schedule(Generate_Surface_Toolpath);
+    backend_.schedule(Cull_Toolpath_to_Obstacle, cullBox);
+    backend_.schedule(Optimise_Start_End_Positions);
+    backend_.schedule(Generate_Start_End_Rays, GetModelBoundingBox(newmodel));
+    backend_.schedule(Optimise_Start_End_Linkages);
+    backend_.schedule(Add_Custom_Start_End_Positions);
+    // backend_.schedule(Restrict_Max_Angle_per_Move);
+    backend_.run_schedule();
 
-    flatToolpath.clear();
-    for (const auto& segment : toolpath)
-        flatToolpath.insert(flatToolpath.end(), segment.begin(), segment.end());
+    load_done_toolpath = false;
+
     currentLineIndex = 0;
     lastUpdate = std::chrono::high_resolution_clock::now();
 }
+backend_.run();
 
 // === Toggle Model Visibility ===
 if (window.Ret_Button(18)) {
@@ -235,6 +242,16 @@ if (window.Ret_Button(28)) {
     }
 }
 
+        if(!backend_.return_run_status() && backend_.return_worker_status() && !load_done_toolpath){
+            load_done_toolpath = true;
+            std::cout << "Toolpath Loaded" << std::endl;
+            flatToolpath.clear();
+            for (const auto& segment : backend_.return_config().Toolpath){
+                flatToolpath.insert(flatToolpath.end(), segment.begin(), segment.end());
+            }
+
+            toolpath = backend_.return_config().Toolpath;
+        }
 
         BeginMode3D(camera);
         DrawBoundingBox(GetModelBoundingBox(newmodel), GREEN);
