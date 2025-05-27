@@ -15,6 +15,7 @@
 #include <mutex>
 
 enum step{
+    Unknown_Instruction,
     Generate_Surface_Toolpath,
     Cull_Toolpath_to_Obstacle,
     Generate_Start_End_Rays,
@@ -31,11 +32,12 @@ struct Toolpath_Data{
     std::vector<std::vector<Line>> Toolpath;
     std::vector<std::pair<int, BoundingBox>> Obstacles;
     std::vector<std::pair<int, BoundingBox>> CullBoxes;
+    std::vector<std::pair<step, int>> queue;
 };
 
 class backend{
     public:
-    
+
     ~backend() {
         halt();  // Makes sure thread is joined before backend is destroyed
     }
@@ -46,10 +48,13 @@ class backend{
 
     // Schedule Process
     bool schedule(step s);
-    bool schedule(step s, int id);
+    bool schedule(step s, BoundingBox boundingbox);
 
     // Set Settings
     void set_settings(Settings settings);
+
+    // Set Working Model
+    void set_model(Model model);
 
     // Set Obstacles
     bool set_obstacles(int id, BoundingBox obstacle);
@@ -66,7 +71,11 @@ class backend{
     // Halt all processes and shutdown all current threads
     void halt();
 
-    int return_value_Test();
+    // Return progress and values
+    Toolpath_Data return_config();
+    std::pair<step, int> return_progress();
+    bool return_run_status();
+    bool return_worker_status();
 
     private:
     /**##########################################
@@ -75,13 +84,25 @@ class backend{
 
     void worker();
 
+    std::pair<BoundingBox, bool> get_obstacle_by_id(int id, std::vector<std::pair<int, BoundingBox>> vector);
+
+    bool perform_process(step step, int id);
+
     private:
+    // Thread Variables
     std::thread workerThread;
     std::mutex dataMutex;
     bool run_is_Active = false;
     bool worker_finished = true;
 
-    int test_value = 0;
+    // Thread Returns
+    step Current_Step = Unknown_Instruction;
+    int Worker_step = 0;
+
+    // System Variables
+    Toolpath_Data system_data_;
+    slice slicing_tools;
+    int unique_id;
 };
 
 #endif
