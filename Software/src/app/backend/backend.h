@@ -37,6 +37,7 @@ struct Toolpath_Data{
 
 class backend{
     public:
+    backend() = default;
 
     ~backend() {
         halt();  // Makes sure thread is joined before backend is destroyed
