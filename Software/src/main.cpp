@@ -130,8 +130,13 @@ bool modelVisible = true;
 bool showPath = true;
 bool showCombinedPath = true;
 
+    backend backend_;
 
     while(!WindowShouldClose()){
+
+        backend_.run();
+        std::cout << backend_.return_value_Test() << std::endl;
+
         models.Sha_Model(1, shader);
         window.Update_Camera(&camera);
         BeginDrawing();

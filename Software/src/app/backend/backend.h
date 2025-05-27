@@ -35,6 +35,10 @@ struct Toolpath_Data{
 
 class backend{
     public:
+    
+    ~backend() {
+        halt();  // Makes sure thread is joined before backend is destroyed
+    }
 
     /**##########################################
      * #              API commands              #
@@ -59,14 +63,25 @@ class backend{
     // Run the schedule
     void run();
 
-    
-
     // Halt all processes and shutdown all current threads
     void halt();
 
+    int return_value_Test();
+
     private:
+    /**##########################################
+     * #              API helpers               #
+     * ##########################################*/
+
+    void worker();
+
+    private:
+    std::thread workerThread;
     std::mutex dataMutex;
-    bool run_is_Active = 0;
+    bool run_is_Active = false;
+    bool worker_finished = true;
+
+    int test_value = 0;
 };
 
 #endif
