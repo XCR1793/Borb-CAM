@@ -158,6 +158,12 @@ std::string path::Return_EndPos(float x, float y, float z, float a, float b, flo
  * #              Gcode Commands            #
  * ##########################################*/
 
+// Set Feedrate
+bool path::Feedrate(float f){
+    Write_File_Last(default_file_path, "", ("F" + std::to_string(f)));
+    return true;
+}
+
 // Rapid Movement (xyz millimeters / inches) (abc degrees), f = feedrate
 bool path::G0(float f){
     Write_File_Last(default_file_path, "", ("G0 " + std::to_string(f)));

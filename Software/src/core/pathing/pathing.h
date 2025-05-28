@@ -54,6 +54,9 @@ class path{
      * #              Gcode Commands            #
      * ##########################################*/
 
+    // Set Feedrate
+    bool Feedrate(float f);
+
     // Rapid Movement (xyz millimeters / inches) (abc degrees), f = feedrate
     bool G0(float f);
     bool G0(float x, float y, float z);
