@@ -436,7 +436,7 @@ slice& slice::Set_Slicing_Plane(const Vector2& Rotation_X_Y, const float& Plane_
 slice& slice::Set_Slicing_Distance(const float& Distance){
     if(Distance < 0){std::cout << "Slicing distance cannot be negative." << std::endl; return *this;}
     if(Distance == 0){std::cout << "Slicing distance cannot be 0." << std::endl; return *this;}
-    if(Distance > 0.01){std::cout << "Small slicing distances will cause lag, are you sure you need this level of precision?" << std::endl; return *this;}
+    if(Distance > 0.01){std::cout << "Small slicing distances will cause lag, are you sure you need this level of precision?" << std::endl;}
     config.SlicingDistance = Distance;
     return *this;
 }
@@ -771,6 +771,8 @@ std::vector<std::vector<Line>> slice::Interpolate_Max_Angle_Displacement(std::ve
                 }
             }
         }
+
+        std::cout << "Angle Interpolations" << processedSlice.size() << std::endl;
 
         Result.push_back(processedSlice);
     }
