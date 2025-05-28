@@ -205,9 +205,20 @@ void frontend::run(){
         }
         if(mini_panels[1].Button_Bar[3].value > 0.5f){ // Save Path to Gcode Button
             mini_panels[1].Button_Bar[3].value = 0.0f;
-            bool enable = 0;
-            if(mini_panels[2].Button_Bar[0].value > 0.5f){enable = 1;}
-            Save_To_Gcode(enable, mini_panels[2].Button_Bar[2].value);
+            bool enable_cull     = (mini_panels[2].Button_Bar[0].value > 0.5f);
+            bool enable_restrict = (mini_panels[2].Button_Bar[2].value > 0.5f);
+            bool enable_offset   = (mini_panels[2].Button_Bar[5].value > 0.5f);
+
+            int angle_cull       = (int)mini_panels[2].Button_Bar[1].value;
+            int angle_restrict   = (int)mini_panels[2].Button_Bar[3].value;
+            float restrict_amt   = mini_panels[2].Button_Bar[4].value;
+
+            int angle_offset     = (int)mini_panels[2].Button_Bar[6].value;
+            float offset_amt     = mini_panels[2].Button_Bar[7].value;
+
+            Save_To_Gcode( enable_cull, angle_cull,
+                           enable_restrict, angle_restrict, restrict_amt,
+                           enable_offset, angle_offset, offset_amt );
         }
         if(mini_panels[1].Button_Bar[4].value > 0.5f){ // Toggle Toolpath
             mini_panels[1].Button_Bar[4].value = 0.0f;
@@ -496,6 +507,7 @@ void frontend::Initialise_Inputs(){
     // window.Add_Button(3, gs.button_height, gs.button_width, next_float(), 0, "Obstacles");
 
     // === Slicer & Pathing Settings Mini Panel ===
+    reset_int(4);
     mcg.Title = true;
     mcg.title = "Model Settings";
     mcg.start_x = 20;
@@ -544,10 +556,15 @@ void frontend::Initialise_Inputs(){
 
     std::vector<per_button_Config> misc_buttons = {
         { "Enable Culling"  , 0, 0, Toggle},
-        { "Enable Restriction",0,0, Toggle},
         { "Cull Angles"     , 6, 1, Cycle , 1, 6, { "A", "B", "C", "AB", "AC", "BC" } },
-        { "Restrict Angles" , 6, 1, Cycle , 1, 6, { "A", "B", "C", "AB", "AC", "BC" } }
+        { "Enable Restriction",0,0, Toggle},
+        { "Restrict Angles" , 6, 1, Cycle , 1, 6, { "A", "B", "C", "AB", "AC", "BC" } },
+        { "Restrict Amount" , 1.0f, 1.0f, Button_Type::Value},
+        { "Enable Offset"   ,0,0, Toggle},
+        { "Offset Angles"   , 6, 1, Cycle , 1, 6, { "A", "B", "C", "AB", "AC", "BC" } },
+        { "Offset Amount"   , PI/8.0f, 0.0f, Button_Type::Value},
     };
+
     mcg.Title = true;
     mcg.title = "Restriction Settings";
     mcg.start_x = GetScreenWidth() - 250 - 20;
@@ -640,7 +657,15 @@ void frontend::Reset_Model_Transform(){
     Transform_Model();
 }
 
-void frontend::Save_To_Gcode(bool Enable_Restriction, int Choose_Angle){
+void frontend::Save_To_Gcode(   bool Enable_Cull, 
+                                int Choose_Angle_Cull, 
+                                bool Enable_Reduce, 
+                                int Choose_Angle_Reduce, 
+                                float Reduce_Amount,
+                                bool Enable_Offset,
+                                int Choose_Angle_Offset,
+                                float Offset_Amount){
+
     // Extract toolpath from backend
     std::vector<Line> flat_toolpath = backend_->slicing_tools.Toolpath_Flattener();
     if(flat_toolpath.empty()){ return; }
@@ -648,8 +673,6 @@ void frontend::Save_To_Gcode(bool Enable_Restriction, int Choose_Angle){
     std::vector<std::pair<Vector3, Vector3>> pathPositions;
 
     // Fetch GUI toggles
-    bool cullingEnabled = (mini_panels[2].Button_Bar[0].value > 0.5f);  // Enable Culling
-    // Enable_Restriction comes from Button_Bar[1], already passed in
 
     paths.Clear_File();
     paths.Reset_N();
@@ -659,7 +682,9 @@ void frontend::Save_To_Gcode(bool Enable_Restriction, int Choose_Angle){
         Vector3 rot = meshing.NormalToRotation(line.endLinePoint.Normal);
         rot.z += -90.0f;
         Vector3 rotConv = RayRotConvert(rot);
-        rotConv = Cull_Angles(Choose_Angle, rotConv, !cullingEnabled); // Only apply if culling is enabled
+        rotConv = Cull_Angles(Choose_Angle_Cull, rotConv, !Enable_Cull);
+        rotConv = Reduce_Angles(Choose_Angle_Reduce, rotConv, Reduce_Amount, !Enable_Reduce);
+        rotConv = Offset_Angles(Choose_Angle_Offset, rotConv, Offset_Amount, !Enable_Offset);
         pathPositions.push_back({ RayPosConvert(pos), rotConv });
     }
 
@@ -696,5 +721,71 @@ Vector3 frontend::Cull_Angles(int Choose_Angle, Vector3 Angles, bool bypass){
             // Do nothing if invalid value passed
             break;
     }
+    return Angles;
+}
+
+Vector3 frontend::Reduce_Angles(int Choose_Angle, Vector3 Angles, float Amount, bool bypass){
+    if (bypass || Amount == 0.0f) return Angles;
+
+    switch (Choose_Angle) {
+        case 1: // A ÷ Amount
+            Angles.x /= Amount;
+            break;
+        case 2: // B ÷ Amount
+            Angles.y /= Amount;
+            break;
+        case 3: // C ÷ Amount
+            Angles.z /= Amount;
+            break;
+        case 4: // A & B ÷ Amount
+            Angles.x /= Amount;
+            Angles.y /= Amount;
+            break;
+        case 5: // A & C ÷ Amount
+            Angles.x /= Amount;
+            Angles.z /= Amount;
+            break;
+        case 6: // B & C ÷ Amount
+            Angles.y /= Amount;
+            Angles.z /= Amount;
+            break;
+        default:
+            // Do nothing for unrecognized choice
+            break;
+    }
+
+    return Angles;
+}
+
+Vector3 frontend::Offset_Angles(int Choose_Angle, Vector3 Angles, float Amount, bool bypass){
+    if (bypass) return Angles;
+
+    switch (Choose_Angle) {
+        case 1: // A + Amount
+            Angles.x += Amount;
+            break;
+        case 2: // B + Amount
+            Angles.y += Amount;
+            break;
+        case 3: // C + Amount
+            Angles.z += Amount;
+            break;
+        case 4: // A & B + Amount
+            Angles.x += Amount;
+            Angles.y += Amount;
+            break;
+        case 5: // A & C + Amount
+            Angles.x += Amount;
+            Angles.z += Amount;
+            break;
+        case 6: // B & C + Amount
+            Angles.y += Amount;
+            Angles.z += Amount;
+            break;
+        default:
+            // Do nothing if unknown option
+            break;
+    }
+
     return Angles;
 }

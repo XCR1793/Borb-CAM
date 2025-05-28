@@ -145,9 +145,20 @@
 
         void Reset_Model_Transform();
 
-        void Save_To_Gcode(bool Enable_Restriction, int Choose_Angle);
+        void Save_To_Gcode( bool Enable_Cull, 
+                            int Choose_Angle_Cull, 
+                            bool Enable_Reduce, 
+                            int Choose_Angle_Reduce, 
+                            float Reduce_Amount,
+                            bool Enable_Offset,
+                            int Choose_Angle_Offset,
+                            float Offset_Amount);
 
         Vector3 Cull_Angles(int Choose_Angle, Vector3 Angles, bool bypass);
+
+        Vector3 Reduce_Angles(int Choose_Angle, Vector3 Angles, float Amount, bool bypass);
+
+        Vector3 Offset_Angles(int Choose_Angle, Vector3 Angles, float Amount, bool bypass);
 
         private:
         std::shared_ptr<backend> backend_;
@@ -165,6 +176,8 @@
         int button_id = 0;
         float incremental = 0;
         int float_value_increment = 0;
+        float Screen_Width = 0;
+        float Screen_Height = 0;
         
         Mini_Panel_Config mini_panel_config;
         std::vector<Mini_Panel_Config> mini_panels;
