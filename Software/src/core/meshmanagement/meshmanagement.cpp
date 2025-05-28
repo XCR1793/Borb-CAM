@@ -588,6 +588,72 @@ std::pair<Point, bool> mesh::IntersectLineTriangle(const Line& line, const Trian
  * #       Mesh Manipulation Functions      #
  * ##########################################*/
 
+Model mesh::Scale_Model(Model model, float scale){
+    for (int i = 0; i < model.meshCount; i++) {
+        Mesh* mesh = &model.meshes[i];
+
+        for (int v = 0; v < mesh->vertexCount; v++) {
+            mesh->vertices[v * 3 + 0] *= scale; // x
+            mesh->vertices[v * 3 + 1] *= scale; // y
+            mesh->vertices[v * 3 + 2] *= scale; // z
+        }
+
+        UploadMesh(mesh, false);
+    }
+
+    model.transform = MatrixIdentity(); // Reset transform
+    return model;
+}
+
+Model mesh::Rotate_Model(Model model, Vector3 rotation){
+    Matrix rotX = MatrixRotateX(rotation.x);
+    Matrix rotY = MatrixRotateY(rotation.y);
+    Matrix rotZ = MatrixRotateZ(rotation.z);
+
+    // Apply in ZYX order (right to left: X then Y then Z)
+    Matrix rotationMatrix = MatrixMultiply(MatrixMultiply(rotZ, rotY), rotX);
+
+    for (int i = 0; i < model.meshCount; i++) {
+        Mesh* mesh = &model.meshes[i];
+
+        for (int v = 0; v < mesh->vertexCount; v++) {
+            Vector3 vertex = {
+                mesh->vertices[v * 3 + 0],
+                mesh->vertices[v * 3 + 1],
+                mesh->vertices[v * 3 + 2]
+            };
+
+            vertex = Vector3Transform(vertex, rotationMatrix);
+
+            mesh->vertices[v * 3 + 0] = vertex.x;
+            mesh->vertices[v * 3 + 1] = vertex.y;
+            mesh->vertices[v * 3 + 2] = vertex.z;
+        }
+
+        UploadMesh(mesh, false);
+    }
+
+    model.transform = MatrixIdentity(); // Reset transform
+    return model;
+}
+
+Model mesh::Move_Model(Model model, Vector3 translation){
+    for (int i = 0; i < model.meshCount; i++) {
+        Mesh* mesh = &model.meshes[i];
+
+        for (int v = 0; v < mesh->vertexCount; v++) {
+            mesh->vertices[v * 3 + 0] += translation.x;
+            mesh->vertices[v * 3 + 1] += translation.y;
+            mesh->vertices[v * 3 + 2] += translation.z;
+        }
+
+        UploadMesh(mesh, false);
+    }
+
+    model.transform = MatrixIdentity(); // Reset transform
+    return model;
+}
+
 multimodel mesh::Scale_Model(multimodel &mmodel, float scale){
     mmodel.scale = scale;
     Matrix scaleMat = MatrixScale(scale, scale, scale);

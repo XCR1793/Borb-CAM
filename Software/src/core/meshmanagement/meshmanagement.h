@@ -127,6 +127,12 @@ class mesh{
      * #       Mesh Manipulation Functions      #
      * ##########################################*/
 
+    Model Scale_Model(Model model, float scale);
+
+    Model Rotate_Model(Model model, Vector3 rotation);
+
+    Model Move_Model(Model model, Vector3 translation);
+
     multimodel Scale_Model(multimodel &model, float scale);
 
     multimodel Position_Model(multimodel &model, Vector3 position);
