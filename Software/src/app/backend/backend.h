@@ -68,6 +68,9 @@ class backend{
     // Clear Scheduled Processes
     void clear_schedule();
 
+    // Clear Toolpath
+    void clear_toolpath();
+
     // Run the schedule
     void run_schedule();
 

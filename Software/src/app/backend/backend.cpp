@@ -72,6 +72,11 @@
         system_data_.queue.clear();
     }
 
+    void backend::clear_toolpath(){
+        system_data_.Toolpath.clear();
+        slicing_tools.Clear_Toolpath();
+    }
+    
     void backend::run_schedule(){
         start_run = true;
         backend::run();
@@ -79,6 +84,8 @@
 
     void backend::run(){
         std::lock_guard<std::mutex> lock(dataMutex);
+
+        // clear_toolpath();
 
         // Start worker thread if not active and finished
         if(!run_is_Active && worker_finished && start_run){

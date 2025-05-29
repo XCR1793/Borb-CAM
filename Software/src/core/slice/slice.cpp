@@ -783,6 +783,7 @@ std::vector<std::vector<Line>> slice::Interpolate_Max_Angle_Displacement(std::ve
 std::vector<Line> slice::Toolpath_Flattener(std::vector<std::vector<Line>>& ToolPaths){
     if(ToolPaths.empty()){return {};}
     std::vector<Line> Flattened_Toolpath;
+    Flattened_Toolpath.clear();
 
     for(const auto& segment : ToolPaths){
         Flattened_Toolpath.insert(Flattened_Toolpath.end(), segment.begin(), segment.end());

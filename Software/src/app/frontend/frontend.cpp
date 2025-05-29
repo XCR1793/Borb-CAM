@@ -122,6 +122,7 @@ void frontend::run(){
             if(Toolpath_Visible){
                 Color gradientStart = BLUE;
                 Color gradientEnd   = RED;
+                DrawBoundingBox(cullBox, GREEN);
 
                 for (const auto& segment : toolpath) {
                     size_t count = segment.size();
@@ -522,10 +523,10 @@ void frontend::Initialise_Inputs(){
     mcg.color_increment = {5, 5, 5, 0};
 
     std::vector<per_button_Config> button_inputs = {
-        { "Translate X"   , 0.1f       , 0.0f      , Button_Type::Value}, // Model X-axis translation
-        { "Translate Y"   , 0.1f       , -1.0f     , Button_Type::Value}, // Model Y-axis translation (starts offset)
-        { "Translate Z"   , 0.1f       , 0.0f      , Button_Type::Value}, // Model Z-axis translation
-        { "Scale"         , 0.1f       , 0.1f      , Button_Type::Value}, // Model scale
+        { "Translate X"   , 1.0f       , 0.0f      , Button_Type::Value}, // Model X-axis translation
+        { "Translate Y"   , 1.0f       , -1.0f     , Button_Type::Value}, // Model Y-axis translation (starts offset)
+        { "Translate Z"   , 1.0f       , 0.0f      , Button_Type::Value}, // Model Z-axis translation
+        { "Scale"         , 10.0f      , 0.1f      , Button_Type::Value}, // Model scale
         { "Rotation A"    , PI / 20.0f , 0.0f      , Button_Type::Value}, // Rotation A (toolpath)
         { "Rotation B"    , PI / 20.0f , 0.0f      , Button_Type::Value}, // Rotation B (toolpath)
         { "Rotation C"    , PI / 20.0f , 0.0f      , Button_Type::Value}, // Rotation C (toolpath)
@@ -556,13 +557,13 @@ void frontend::Initialise_Inputs(){
 
     std::vector<per_button_Config> misc_buttons = {
         { "Enable Culling"  , 0, 0, Toggle},
-        { "Cull Angles"     , 6, 1, Cycle , 1, 6, { "A", "B", "C", "AB", "AC", "BC" } },
+        { "Cull Angles"     , 7, 1, Cycle , 1, 7, { "A", "B", "C", "AB", "AC", "BC", "ABC" } },
         { "Enable Restriction",0,0, Toggle},
-        { "Restrict Angles" , 6, 1, Cycle , 1, 6, { "A", "B", "C", "AB", "AC", "BC" } },
+        { "Restrict Angles" , 7, 1, Cycle , 1, 7, { "A", "B", "C", "AB", "AC", "BC", "ABC" } },
         { "Restrict Amount" , 1.0f, 1.0f, Button_Type::Value},
         { "Enable Offset"   ,0,0, Toggle},
-        { "Offset Angles"   , 6, 1, Cycle , 1, 6, { "A", "B", "C", "AB", "AC", "BC" } },
-        { "Offset Amount"   , PI/8.0f, 0.0f, Button_Type::Value},
+        { "Offset Angles"   , 7, 1, Cycle , 1, 7, { "A", "B", "C", "AB", "AC", "BC", "ABC" } },
+        { "Offset Amount"   , 45, 0.0f, Button_Type::Value},
     };
 
     mcg.Title = true;
@@ -624,6 +625,7 @@ void frontend::Slice(){
 
     // backend_->set_settings(slicing.return_Settings());
     // std::cout << "Slicing Distance: " << slicing.return_Settings().SlicingDistance << std::endl;
+    backend_->clear_toolpath();
     backend_->clear_schedule();
     backend_->set_model(current_model.modified_model);
     backend_->schedule(Generate_Surface_Toolpath);
@@ -635,7 +637,7 @@ void frontend::Slice(){
     // backend_->schedule(Generate_Start_End_Rays, work_box);
     backend_->schedule(Optimise_Start_End_Linkages);
     backend_->schedule(Add_Custom_Start_End_Positions);
-    backend_->schedule(Restrict_Max_Angle_per_Move);
+    // backend_->schedule(Restrict_Max_Angle_per_Move);
     backend_->run_schedule();
 }
 
@@ -657,6 +659,41 @@ void frontend::Reset_Model_Transform(){
     Transform_Model();
 }
 
+// void frontend::Save_To_Gcode(   bool Enable_Cull, 
+//                                 int Choose_Angle_Cull, 
+//                                 bool Enable_Reduce, 
+//                                 int Choose_Angle_Reduce, 
+//                                 float Reduce_Amount,
+//                                 bool Enable_Offset,
+//                                 int Choose_Angle_Offset,
+//                                 float Offset_Amount){
+
+//     // Extract toolpath from backend
+//     std::vector<Line> flat_toolpath = backend_->slicing_tools.Toolpath_Flattener();
+//     if(flat_toolpath.empty()){ return; }
+
+//     std::vector<std::pair<Vector3, Vector3>> pathPositions;
+
+//     // Fetch GUI toggles
+
+//     paths.Clear_File();
+//     paths.Reset_N();
+    
+//     for(const Line& line : flat_toolpath){
+//         Vector3 pos = line.endLinePoint.Position;
+//         Vector3 rot = meshing.NormalToRotation(line.endLinePoint.Normal);
+//         rot.z += -90.0f;
+//         Vector3 rotConv = RayRotConvert(rot);
+//         rotConv = Cull_Angles(Choose_Angle_Cull, rotConv, !Enable_Cull);
+//         rotConv = Reduce_Angles(Choose_Angle_Reduce, rotConv, Reduce_Amount, !Enable_Reduce);
+//         rotConv = Offset_Angles(Choose_Angle_Offset, rotConv, Offset_Amount, !Enable_Offset);
+//         pathPositions.push_back({ RayPosConvert(pos), rotConv });
+//     }
+
+//     paths.Feedrate(400);
+//     paths.Path_to_Gcode1(pathPositions);
+// }
+
 void frontend::Save_To_Gcode(   bool Enable_Cull, 
                                 int Choose_Angle_Cull, 
                                 bool Enable_Reduce, 
@@ -666,26 +703,43 @@ void frontend::Save_To_Gcode(   bool Enable_Cull,
                                 int Choose_Angle_Offset,
                                 float Offset_Amount){
 
-    // Extract toolpath from backend
-    std::vector<Line> flat_toolpath = backend_->slicing_tools.Toolpath_Flattener();
-    if(flat_toolpath.empty()){ return; }
+    const auto& toolpath_segments = backend_->return_config().Toolpath;
+    if (toolpath_segments.empty()) return;
 
     std::vector<std::pair<Vector3, Vector3>> pathPositions;
 
-    // Fetch GUI toggles
-
     paths.Clear_File();
     paths.Reset_N();
-    
-    for(const Line& line : flat_toolpath){
-        Vector3 pos = line.endLinePoint.Position;
-        Vector3 rot = meshing.NormalToRotation(line.endLinePoint.Normal);
-        rot.z += -90.0f;
-        Vector3 rotConv = RayRotConvert(rot);
-        rotConv = Cull_Angles(Choose_Angle_Cull, rotConv, !Enable_Cull);
-        rotConv = Reduce_Angles(Choose_Angle_Reduce, rotConv, Reduce_Amount, !Enable_Reduce);
-        rotConv = Offset_Angles(Choose_Angle_Offset, rotConv, Offset_Amount, !Enable_Offset);
-        pathPositions.push_back({ RayPosConvert(pos), rotConv });
+
+    for (const auto& segment : toolpath_segments) {
+        size_t count = segment.size();
+        for (size_t i = 0; i < count; ++i) {
+            const Line& line = segment[i];
+
+            // START point
+            {
+                Vector3 pos = line.startLinePoint.Position;
+                Vector3 rot = meshing.NormalToRotation(line.startLinePoint.Normal);
+                rot.z += -90.0f;
+                Vector3 rotConv = RayRotConvert(rot);
+                rotConv = Cull_Angles(Choose_Angle_Cull, rotConv, !Enable_Cull);
+                rotConv = Reduce_Angles(Choose_Angle_Reduce, rotConv, Reduce_Amount, !Enable_Reduce);
+                rotConv = Offset_Angles(Choose_Angle_Offset, rotConv, Offset_Amount, !Enable_Offset);
+                pathPositions.push_back({ RayPosConvert(pos), rotConv });
+            }
+
+            // END point
+            {
+                Vector3 pos = line.endLinePoint.Position;
+                Vector3 rot = meshing.NormalToRotation(line.endLinePoint.Normal);
+                rot.z += -90.0f;
+                Vector3 rotConv = RayRotConvert(rot);
+                rotConv = Cull_Angles(Choose_Angle_Cull, rotConv, !Enable_Cull);
+                rotConv = Reduce_Angles(Choose_Angle_Reduce, rotConv, Reduce_Amount, !Enable_Reduce);
+                rotConv = Offset_Angles(Choose_Angle_Offset, rotConv, Offset_Amount, !Enable_Offset);
+                pathPositions.push_back({ RayPosConvert(pos), rotConv });
+            }
+        }
     }
 
     paths.Feedrate(400);
@@ -714,6 +768,11 @@ Vector3 frontend::Cull_Angles(int Choose_Angle, Vector3 Angles, bool bypass){
             Angles.z = 0.0f;
             break;
         case 6: // B & C → 0
+            Angles.y = 0.0f;
+            Angles.z = 0.0f;
+            break;
+        case 7: // A, B & C → 0
+            Angles.x = 0.0f;
             Angles.y = 0.0f;
             Angles.z = 0.0f;
             break;
@@ -749,6 +808,11 @@ Vector3 frontend::Reduce_Angles(int Choose_Angle, Vector3 Angles, float Amount, 
             Angles.y /= Amount;
             Angles.z /= Amount;
             break;
+        case 7: // A, B & C ÷ Amount
+            Angles.x /= Amount;
+            Angles.y /= Amount;
+            Angles.z /= Amount;
+            break;
         default:
             // Do nothing for unrecognized choice
             break;
@@ -779,6 +843,11 @@ Vector3 frontend::Offset_Angles(int Choose_Angle, Vector3 Angles, float Amount, 
             Angles.z += Amount;
             break;
         case 6: // B & C + Amount
+            Angles.y += Amount;
+            Angles.z += Amount;
+            break;
+        case 7: // A, B & C + Amount
+            Angles.x += Amount;
             Angles.y += Amount;
             Angles.z += Amount;
             break;
