@@ -183,7 +183,7 @@
         std::vector<Mini_Panel_Config> mini_panels;
 
         // Slicing Variables
-        BoundingBox cullBox = {Vector3{-100, 100, -100}, Vector3{100, 50, 100}};
+        BoundingBox cullBox = {Vector3{-100, -100, -100}, Vector3{100, 0, 100}};
         Model_Config current_model;
         SliceState sliceState = SliceState::Idle;
 

@@ -184,7 +184,9 @@ void frontend::run(){
             // Apply to slicing settings
             backend_->slicing_tools
                 .Set_Slicing_Plane({Rotation_Button_Plane.x, Rotation_Button_Plane.y}, 0)
-                .Set_Slicing_Distance(Slice_Plane_Distance);
+                .Set_Slicing_Distance(Slice_Plane_Distance)
+                .Set_Starting_Position((Setting_Values){.mode = 0, .value3D = (Vector3){10, 80, 0}})
+                .Set_Ending_Position((Setting_Values){.mode = 0, .value3D = (Vector3){0, 10, 70}});
         }
         if(mini_panels[1].Button_Bar[0].value > 0.5f){ // Slice Button
             mini_panels[1].Button_Bar[0].value = 0.0f;
@@ -526,7 +528,7 @@ void frontend::Initialise_Inputs(){
         { "Translate X"   , 1.0f       , 0.0f      , Button_Type::Value}, // Model X-axis translation
         { "Translate Y"   , 1.0f       , -1.0f     , Button_Type::Value}, // Model Y-axis translation (starts offset)
         { "Translate Z"   , 1.0f       , 0.0f      , Button_Type::Value}, // Model Z-axis translation
-        { "Scale"         , 10.0f      , 0.1f      , Button_Type::Value}, // Model scale
+        { "Scale"         , 0.1f      , 0.1f      , Button_Type::Value}, // Model scale
         { "Rotation A"    , PI / 20.0f , 0.0f      , Button_Type::Value}, // Rotation A (toolpath)
         { "Rotation B"    , PI / 20.0f , 0.0f      , Button_Type::Value}, // Rotation B (toolpath)
         { "Rotation C"    , PI / 20.0f , 0.0f      , Button_Type::Value}, // Rotation C (toolpath)
@@ -634,7 +636,7 @@ void frontend::Slice(){
     // BoundingBox work_box;
     // work_box.max = {40, 80, 40};
     // work_box.min = {-40, 0, -40};
-    // backend_->schedule(Generate_Start_End_Rays, work_box);
+    backend_->schedule(Generate_Start_End_Rays, GetModelBoundingBox(current_model.modified_model));
     backend_->schedule(Optimise_Start_End_Linkages);
     backend_->schedule(Add_Custom_Start_End_Positions);
     // backend_->schedule(Restrict_Max_Angle_per_Move);
