@@ -1,7 +1,7 @@
 # Borb CAM Slicer
 Borb CAM Slicer is a CNC toolpath generator built for makers, engineers, and artists who need real multi-axis control. It converts 3D OBJ models into clean, efficient G-code for machines ranging from simple 3-axis mills to full 6-axis CNC setups. Instead of just stacking flat slices, Borb CAM interprets triangular mesh geometry to create surface-following toolpaths that hug curves, slopes, and deep cuts — perfect for complex and organic shapes. It supports dynamic tool and machine setups, adaptive step control, and advanced multi-axis motion planning. Whether you're carving sculptures, machining parts, or building molds, Borb CAM gives you the flexibility to go from raw 3D geometry to a finished piece with fewer compromises, fewer crashes, and a lot more control.
 
-![Project_Image](.assets/SoftwareRunning-16_05_2025.png)
+![Project_Image](.assets/SoftwareRunning-01_06_2025.png)
 
 ## Features
 * <strong>Equation Based Tool Path: </strong> Planar Equation Support
